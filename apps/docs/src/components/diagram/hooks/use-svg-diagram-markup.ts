@@ -1,6 +1,5 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import { type DiagramParamsBase } from '../types';
-import { CLIENT_ENV } from '@/env';
 
 export const useSvgDiagramMarkup = ({ lang, path, chart }: DiagramParamsBase) => {
   const id = useId();
@@ -9,16 +8,16 @@ export const useSvgDiagramMarkup = ({ lang, path, chart }: DiagramParamsBase) =>
 
   const krokiApiUrl = useMemo(() => {
     if (lang === 'mermaid') return '';
-    const url = new URL('/api/diagram', CLIENT_ENV().NEXT_PUBLIC_APP_URL);
 
     if (path === '') {
       throw new Error('path is required');
     }
 
-    url.searchParams.set('lang', lang);
-    url.searchParams.set('path', path);
+    const params = new URLSearchParams();
+    params.set('lang', lang);
+    params.set('path', path);
 
-    return url.toString();
+    return `/api/diagram?${params.toString()}`;
   }, [lang, path]);
 
   useEffect(() => {
