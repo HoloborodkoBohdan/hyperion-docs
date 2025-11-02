@@ -1,0 +1,160 @@
+@startuml
+!theme plain
+skinparam sequenceMessageAlign center
+skinparam backgroundColor #FFFFFF
+skinparam participant {
+    BackgroundColor #E3F2FD
+    BorderColor #1976D2
+}
+skinparam actor {
+    BackgroundColor #FFF9C4
+    BorderColor #F57F17
+}
+skinparam database {
+    BackgroundColor #F3E5F5
+    BorderColor #7B1FA2
+}
+
+actor "Account Manager" as Manager [[/docs/ua-fop/glossary/actors#account-manager]]
+participant "Odoo" as Odoo [[/docs/ua-fop/c4/services/fop-backend]]
+participant "Payroll Service" as PayrollService [[/docs/ua-fop/c4/services/fop-backend]]
+participant "Tax Sync Service" as TaxSyncService [[/docs/ua-fop/c4/services/fop-backend]]
+database "PostgreSQL" as DB [[/docs/ua-fop/erd/fop-backend]]
+
+title Batch Payment Processing & Auto-Bill Creation Flow
+
+== Batch Payment Validation in Odoo ==
+
+Manager -> Odoo: Validate batch payment\n(batch_payment_id)
+activate Odoo
+
+Odoo -> DB: Verify batch payment exists\nand is ready for processing
+Odoo <-- DB: batch payment data
+
+note right of Odoo
+    Batch payment contains:
+    - Multiple employee payments
+    - Total amount
+    - Payment date
+    - Company information
+end note
+
+alt Batch Payment Not Found
+    Manager <-- Odoo: HTTP 404 Not Found
+    return
+else Batch Payment Invalid State
+    Manager <-- Odoo: HTTP 400 Bad Request
+    return
+end
+
+== Trigger FOP Backend Processing ==
+
+Odoo -> PayrollService: Process Batch Payment\n(batch_payment_id)
+activate PayrollService
+
+PayrollService -> DB: Retrieve all payments\nin the batch
+PayrollService <-- DB: list of payments
+
+note right of DB
+    Each payment includes:
+    - employee_id
+    - amount
+    - payment_date
+    - bill_id (may be NULL)
+end note
+
+alt No Payments Found
+    Odoo <-- PayrollService: HTTP 404 Not Found
+    Manager <-- Odoo: HTTP 404 Not Found
+    return
+end
+
+== Process Each Payment Without Bill ==
+
+loop For each payment without bill_id
+
+    PayrollService -> PayrollService: Check if payment\nhas linked bill
+
+    alt Payment has no bill_id
+
+        PayrollService -> DB: Create fop_bill record\nfor payment
+
+        alt Bill Creation Failed
+            PayrollService <-- DB: HTTP 500 Internal Server Error
+            note right of PayrollService: Log error and continue\nto next payment
+        else Bill Created Successfully
+            PayrollService <-- DB: bill_id
+
+            note right of DB
+                Bill fields:
+                - employee_id: ref to hr_employee
+                - payment_id: ref to payment
+                - company_id: ref to fop_company
+                - date: payment date
+                - state: 'draft'
+            end note
+
+            PayrollService -> DB: Add "Total" product line\nto bill
+
+            note right of DB
+                Bill line fields:
+                - bill_id: ref to fop_bill
+                - product_id: "Total" product
+                - quantity: 1
+                - unit_price: payment amount
+                - total: payment amount
+            end note
+
+            PayrollService -> DB: Link bill to payment
+
+            PayrollService -> DB: Set bill amount\nto match payment
+
+            note right of PayrollService
+                Bill total must equal
+                payment amount for
+                reconciliation
+            end note
+        end
+
+    else Payment already has bill
+        note right of PayrollService: Skip - bill already exists
+    end
+
+end
+
+== Log Sync Operation ==
+
+PayrollService -> TaxSyncService: Log Batch Processing\n(batch_id, bills_created)
+activate TaxSyncService
+
+TaxSyncService -> DB: Record sync operation\nwith timestamp
+TaxSyncService <-- DB: sync_log_id
+
+note right of DB
+    Sync log fields:
+    - batch_payment_id
+    - operation: 'auto_bill_creation'
+    - bills_created: count
+    - status: 'completed'
+    - timestamp
+    - error_message: NULL
+end note
+
+PayrollService <-- TaxSyncService: Logging completed
+deactivate TaxSyncService
+
+== Return Results ==
+
+Odoo <-- PayrollService: HTTP 200 OK\n(bills_created: 18, bills_skipped: 7)
+deactivate PayrollService
+
+Manager <-- Odoo: HTTP 200 OK
+deactivate Odoo
+
+note over Manager, DB
+    All payments in the batch now have linked bills
+    Bills are in 'draft' state and ready for review
+    Sync operation logged for audit trail
+end note
+
+@enduml

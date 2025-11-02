@@ -1,0 +1,8 @@
+{
+  "title": "Sequence Diagrams",
+  "pages": [
+    "index",
+    "contract-creation",
+    "batch-payment-processing"
+  ]
+}

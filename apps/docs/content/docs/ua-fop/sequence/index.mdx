@@ -1,0 +1,11 @@
+---
+title: Overview
+description: Overview of Sequence diagrams for the UA FOP Management System
+---
+
+## Available Sequence Diagrams
+
+| Diagram | Description | Actors & Services |
+|---------|-------------|-------------------|
+| [Contract Creation & PDF Generation](./sequence/contract-creation) | End-to-end flow of creating a FOP contract with automatic PDF generation in two versions (with and without facsimile) | FOP Manager, Employee Service, Contract Service, Report Service, File Service, Report Engine |
+| [Batch Payment Processing & Auto-Bill Creation](./sequence/batch-payment-processing) | Automated bill creation process for batch payments validated in Odoo | Account Manager, Odoo, Payroll Service, Tax Sync Service |

@@ -1,0 +1,225 @@
+---
+title: Batch Payment Processing & Auto-Bill Creation
+description: Sequence diagram showing the automated bill creation process for batch payments
+---
+
+This diagram illustrates the workflow for processing batch payments with automatic bill generation for payments that don't have linked bills.
+
+<Diagram lang="plantuml" path="sequence/batch-payment-processing.puml" alt="Batch Payment Processing and Auto-Bill Creation Sequence Diagram" />
+
+## Flow Overview
+
+The batch payment processing automates bill creation for payroll payments to ensure all payments have corresponding bills for tax and accounting purposes:
+
+1. Validate batch payment in Odoo
+2. Trigger FOP Backend processing
+3. Process each payment in the batch
+4. Auto-create bills for payments without bills
+5. Add product lines to bills
+6. Log sync operation for audit
+7. Return summary to Odoo
+
+## Actors & Services
+
+### Actors
+- **Account Manager** - User initiating batch payment validation
+
+### Services Involved
+- **Odoo** - Main ERP system coordinating the process
+- **Payroll Service** - Processes payments and creates bills
+- **Tax Sync Service** - Logs sync operations and maintains audit trail
+- **PostgreSQL** - Database storing payments, bills, and sync logs
+
+## Step-by-Step Breakdown
+
+### 1. Batch Payment Validation
+
+Account Manager validates a batch payment in Odoo containing:
+- Multiple employee payments
+- Total amount
+- Payment date
+- Company information
+
+The system verifies:
+- Batch payment exists
+- Ready for processing (proper state)
+- All required data present
+
+### 2. Trigger FOP Backend
+
+Odoo triggers the Payroll Service to process the batch:
+- Retrieves all payments in the batch
+- Each payment includes employee, amount, date, and bill link status
+
+### 3. Process Payments Without Bills
+
+For each payment that doesn't have a `bill_id`:
+
+#### Create Bill Record
+```json
+{
+  "employee_id": 123,
+  "payment_id": 456,
+  "company_id": 5,
+  "date": "2024-01-15",
+  "state": "draft"
+}
+```
+
+#### Add Product Line
+Creates a single "Total" product line:
+```json
+{
+  "bill_id": 789,
+  "product_id": "total_product",
+  "quantity": 1,
+  "unit_price": 5000.00,
+  "total": 5000.00
+}
+```
+
+**Why "Total" Product?**
+- Simplifies bill structure
+- Single line item matches payment amount
+- Reduces complexity for automated processing
+
+#### Link to Payment
+- Updates payment record with `bill_id`
+- Ensures bill amount matches payment amount exactly
+- Required for proper reconciliation
+
+### 4. Skip Existing Bills
+
+If a payment already has a `bill_id`:
+- Skip bill creation
+- Count as "skipped" in results
+- No changes to existing bill
+
+### 5. Log Sync Operation
+
+Tax Sync Service records the operation:
+```json
+{
+  "batch_payment_id": 123,
+  "operation": "auto_bill_creation",
+  "bills_created": 18,
+  "status": "completed",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "error_message": null
+}
+```
+
+### 6. Return Summary
+
+Processing complete with summary:
+```json
+{
+  "batch_payment_id": 123,
+  "payments_processed": 25,
+  "bills_created": 18,
+  "bills_skipped": 7
+}
+```
+
+## Key Design Decisions
+
+### Why Auto-Create Bills?
+
+**Compliance Requirements:**
+- Every payment must have a corresponding bill for tax reporting
+- Bills provide documentation for tax authorities
+- Required for proper accounting records
+
+**Efficiency:**
+- Manual bill creation is time-consuming
+- Automated process ensures consistency
+- Reduces human error
+
+### Bill State Management
+
+Bills are created in `draft` state:
+- Allows review before finalization
+- Can be modified if needed
+- Must be approved before tax submission
+
+### Single Product Line Approach
+
+Using a "Total" product simplifies:
+- No need to break down payment components
+- Bill amount always matches payment exactly
+- Easier reconciliation process
+
+### Idempotent Processing
+
+The system checks for existing bills:
+- Prevents duplicate bill creation
+- Safe to run multiple times
+- Handles partial failures gracefully
+
+### Sync Logging
+
+Every batch processing is logged:
+- Audit trail for compliance
+- Troubleshooting failed operations
+- Track processing history
+
+## Database Tables Involved
+
+| Table | Purpose |
+|-------|---------|
+| `account_payment` | Batch payment and individual payments |
+| `fop_bill` | Bill records for payments |
+| `fop_bill_line` | Product lines on bills |
+| `fop_company` | Company details |
+| `hr_employee` | Employee information |
+| `sync_log` | Audit log of sync operations |
+
+## Error Handling
+
+### Validation Errors
+- **Invalid Batch** - Batch payment ID not found or in wrong state
+- **Missing Data** - Required fields missing from payment records
+
+### Processing Errors
+- **Bill Creation Failed** - Database constraint violation or validation error
+- **Amount Mismatch** - Bill total doesn't match payment amount
+- **Product Not Found** - "Total" product not configured in system
+
+### Recovery Strategy
+
+If processing fails:
+1. Log error details in sync_log
+2. Mark operation as 'failed' with error message
+3. Rollback partially created bills (transaction boundary)
+4. Notify Account Manager with specific error
+5. Allow retry after fixing underlying issue
+
+## Business Rules
+
+### Payment-Bill Relationship
+- One payment → One bill (1:1 relationship)
+- Bill amount must equal payment amount exactly
+- Bill date matches payment date
+
+### Batch Processing
+- Process all payments in batch atomically
+- Skip already-processed payments
+- Continue on individual payment errors (optional)
+
+### Bill Approval Workflow
+1. Auto-created bills start in `draft` state
+2. Account Manager reviews bills
+3. Approve bills to change state to `confirmed`
+4. Only confirmed bills sync to tax system
+
+## Integration Points
+
+### Odoo → FOP Backend
+- Trigger: Batch payment validation
+- Method: API call to Payroll Service
+- Response: Processing summary with counts
+
+### Payroll Service → Tax Sync Service
+- Trigger: Batch processing complete
+- Method: Internal service call
+- Purpose: Log operation for audit

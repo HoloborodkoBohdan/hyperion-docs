@@ -1,0 +1,154 @@
+---
+title: Contract Creation & PDF Generation
+description: Sequence diagram showing the end-to-end flow of creating a FOP contract with PDF generation
+---
+
+This diagram illustrates the complete workflow for creating a FOP contract, including automatic PDF generation with and without company facsimile.
+
+<Diagram lang="plantuml" path="sequence/contract-creation.puml" alt="Contract Creation and PDF Generation Sequence Diagram" />
+
+## Flow Overview
+
+The contract creation process involves coordination between multiple services to:
+1. Validate employee data and company
+2. Check for overlapping active contracts
+3. Generate unique contract number
+4. Create contract record with period dates
+5. Generate two PDF versions
+6. Store PDFs as attachments
+7. Link attachments to contract
+8. Return HTTP 201 Created response
+
+## Actors & Services
+
+### Actors
+- **FOP Manager** - Administrative user initiating contract creation
+
+### Services Involved
+- **Employee Service** - Provides employee details and validation
+- **Contract Service** - Orchestrates the entire contract creation workflow
+- **Report Service** - Manages PDF generation queue and coordinates with Report Engine
+- **File Service** - Handles file storage and maintains audit logs
+- **Report Engine** (External) - wkhtmltopdf for PDF rendering
+
+## Step-by-Step Breakdown
+
+### 1. Request & Validation
+FOP Manager provides: employee, company, template, start/end dates
+
+Contract Service validates:
+- Employee, company, and template exist
+- **No overlapping active contracts** for the employee
+- Business rule: Only one `running` contract per employee at a time
+
+### 2. Generate Contract Number
+Format: `YYYYMMNNN` (e.g., `202401045` = 45th contract in Jan 2024)
+- Sequential per company
+- Unique identifier for the contract
+
+### 3. Create Contract Record
+Insert into database with state `draft`:
+```json
+{
+  "number": "202401045",
+  "employee_id": 123,
+  "dep_company_id": 5,
+  "contract_template_id": 10,
+  "start_date": "2024-01-01",
+  "end_date": "2024-12-31",
+  "state": "draft"
+}
+```
+
+### 4. Generate PDFs (2 versions)
+**With Facsimile** (for company records)
+- Report Engine renders PDF with company stamp/signature
+- Stored as attachment
+
+**Without Facsimile** (for employee)
+- Clean PDF without stamp
+- Stored as attachment
+
+Both operations logged in `file_storage_log` for audit
+
+### 5. Activate Contract
+Update contract:
+- Link both PDF attachments
+- Change state to `running`
+
+### 6. Return Success
+HTTP 201 Created with contract details and PDF URLs
+
+## Key Design Decisions
+
+### Contract Period Specification
+FOP Manager must specify:
+- **Start Date** - When the contract becomes active
+- **End Date** - When the contract expires (can be NULL for open-ended)
+
+This allows for:
+- Future-dated contracts
+- Fixed-term contracts (e.g., 1 year)
+- Open-ended contracts (end_date = NULL)
+
+### Company Selection
+Each contract is issued by a specific company (`fop_company`):
+- Multiple companies can use the same system
+- Each company has its own:
+  - Facsimile (stamp/signature)
+  - Signing authority details
+  - Contract number sequence
+
+### Overlapping Contract Prevention
+Before creating a contract, the system validates that:
+- No other `running` contract exists for the same employee
+- With overlapping date ranges
+
+This prevents:
+- Duplicate contracts
+- Conflicting employment terms
+- Payroll confusion
+
+### Why Two PDF Versions?
+- **With Facsimile** - Official company records with stamp/signature
+- **Without Facsimile** - Clean version suitable for sharing with employee
+
+### Asynchronous Report Generation
+Report Service uses a queue-based approach (`report_queue` table) to:
+- Handle multiple concurrent requests
+- Provide status tracking
+- Enable retry on failure
+- Separate concerns (queuing vs rendering)
+
+### File Storage Audit Trail
+Every file operation is logged in `file_storage_log` for:
+- Security auditing
+- Troubleshooting upload/download issues
+- Cloud sync tracking
+
+## Database Tables Involved
+
+| Table | Purpose |
+|-------|---------|
+| `hr_employee` | Employee data |
+| `fop_contract` | Main contract record |
+| `fop_contract_template` | Template definition |
+| `fop_company` | Company details and facsimile |
+| `report_queue` | Report generation queue |
+| `attachment` | File storage |
+| `file_storage_log` | Audit log of file operations |
+
+## Error Handling
+
+### Validation Errors
+- **Overlapping Contract** - If employee has active contract for same period
+- **Invalid Employee** - Employee ID not found
+- **Invalid Company** - Company ID not found
+- **Invalid Template** - Template ID not found or inactive
+
+### Processing Errors
+If any step fails during contract creation:
+- Contract remains in `draft` state
+- Report queue entries show `failed` status with error message
+- Transaction rollback ensures data consistency
+- FOP Manager receives error notification with details

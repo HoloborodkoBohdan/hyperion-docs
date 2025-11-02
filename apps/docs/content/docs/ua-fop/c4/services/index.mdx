@@ -3,11 +3,24 @@ title: Overview
 description: Overview of all services in the UA FOP Management System
 ---
 
-## Services
+## Containers
 
 | Service | Description | Component Details |
 |---------|-------------|-------------------|
-| [Admin Frontend](./admin-frontend) | Web UI for administrative users | Internal component view of the Admin Frontend |
-| [FOP Backend](./fop-backend) | Python/Odoo Module with business logic | Internal component view of the FOP Backend with Application, Service, and Data layers |
-| [FOP Frontend](./fop-frontend) | Web UI for FOP employees (deprecated) | Internal component view of the FOP Frontend |
+| [Admin Frontend](./services/admin-frontend) | Web UI for administrative users | Internal component view of the Admin Frontend |
+| [FOP Backend](./services/fop-backend) | Python/Odoo Module with business logic | Internal component view of the FOP Backend with Application, Service, and Data layers |
+| [FOP Frontend](./services/fop-frontend) | Web UI for FOP employees (deprecated) | Internal component view of the FOP Frontend |
 
+## FOP Backend Internal Services
+
+These services are internal components within the FOP Backend container, organized in the Service Layer ([see C3 diagram](../c3)):
+
+| Service | Responsibility |
+|---------|----------------|
+| **[Employee Service](./services/employee-service)** | Employee validation, data management, and KVED code handling |
+| **[Contract Service](./services/contract-service)** | Contract lifecycle management, contract numbering (YYYYMMNNN format), overlap validation |
+| **Report Service** | PDF generation queue management, coordinates with Report Engine | 
+| **File Service** | File storage, attachment management, audit logging (file_storage_log) | 
+| **Payroll Service** | Batch payment processing, auto-bill creation for payments | 
+| **Tax Sync Service** | Tax registry synchronization, sync operation logging, 2-way sync with Tax Inspection |
+| **[Billing Service](./services/billing-service)** | Bill management, bill posting, validation, and integration with Odoo accounting |

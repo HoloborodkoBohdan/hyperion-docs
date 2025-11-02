@@ -17,12 +17,13 @@ graph TD;
         
         %% Service Layer
         subgraph ServiceLayer [ServiceLayer]
-            EmployeeService[Employee Service - Manages FOP profiles, assignments, and statuses]
-            ContractService[Contract Service - Handles creation, validation, and archiving of contracts]
+            EmployeeService[<a href='employee-service'>Employee Service - Manages FOP profiles, assignments, and statuses</a>]
+            ContractService[<a href='contract-service'>Contract Service - Handles creation, validation, and archiving of contracts</a>]
             PayrollService[Payroll Service - Salary and payment processing logic]
             ReportService[Report Service - Generates PDF reports via Report Engine]
             TaxSyncService[Tax Sync Service - Bidirectional sync with Odoo ERP and Tax Inspection]
             FileService[File Service - Stores and retrieves files from cloud storage]
+            BillingService[<a href='billing-service'>Billing Service - Bill management, posting, and Odoo integration</a>]
         end
         
         %% Data Layer
@@ -47,12 +48,17 @@ graph TD;
     APIHandlers --> EmployeeService
     APIHandlers --> ContractService
     APIHandlers --> PayrollService
+    APIHandlers --> BillingService
+    PayrollService --> BillingService
     PayrollService --> ReportService
     PayrollService --> TaxSyncService
+    ContractService --> EmployeeService
+    BillingService --> EmployeeService
     ReportService --> FileService
     EmployeeService --> DatabaseAdapter
     ContractService --> DatabaseAdapter
     PayrollService --> DatabaseAdapter
+    BillingService --> DatabaseAdapter
     TaxSyncService --> DatabaseAdapter
     DatabaseAdapter --> PostgresDB
 
@@ -73,7 +79,7 @@ graph TD;
     classDef interfaceStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
 
     class APIHandlers,AuthService appLayerStyle
-    class EmployeeService,ContractService,PayrollService,ReportService,TaxSyncService,FileService serviceLayerStyle
+    class EmployeeService,ContractService,PayrollService,ReportService,TaxSyncService,FileService,BillingService serviceLayerStyle
     class DatabaseAdapter,PostgresDB dataLayerStyle
     class ReportEngine,TaxInspection,FileStorage,Odoo interfaceStyle
     class AdminFrontend,FOPFrontend frontendStyle

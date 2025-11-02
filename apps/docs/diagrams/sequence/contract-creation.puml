@@ -1,0 +1,154 @@
+@startuml
+!theme plain
+skinparam sequenceMessageAlign center
+skinparam backgroundColor #FFFFFF
+skinparam participant {
+    BackgroundColor #E3F2FD
+    BorderColor #1976D2
+}
+skinparam actor {
+    BackgroundColor #FFF9C4
+    BorderColor #F57F17
+}
+skinparam database {
+    BackgroundColor #F3E5F5
+    BorderColor #7B1FA2
+}
+
+actor "FOP Manager" as Manager [[/docs/ua-fop/glossary/actors#fop-manager]]
+participant "Employee Service" as EmployeeService [[/docs/ua-fop/c4/services/fop-backend]]
+participant "Contract Service" as ContractService [[/docs/ua-fop/c4/services/fop-backend]]
+participant "Report Service" as ReportService [[/docs/ua-fop/c4/services/fop-backend]]
+participant "File Service" as FileService [[/docs/ua-fop/c4/services/fop-backend]]
+participant "Report Engine" as ReportEngine [[/docs/ua-fop/c4/services/fop-backend]]
+database "PostgreSQL" as DB [[/docs/ua-fop/erd/fop-backend]]
+
+title Contract Creation & PDF Generation Flow
+
+== Employee, Company & Template Selection ==
+
+Manager -> ContractService: Create Contract Request\n(employee_id, company_id, template_id,\nstart_date, end_date)
+activate ContractService
+
+ContractService -> EmployeeService: Get Employee Details(employee_id)
+activate EmployeeService
+EmployeeService -> DB: Validate employee exists\nand retrieve details
+EmployeeService <-- DB: employee data
+ContractService <-- EmployeeService: Employee details
+deactivate EmployeeService
+
+ContractService -> DB: Validate company exists\nand retrieve details
+ContractService <-- DB: company data
+
+ContractService -> DB: Validate template exists\nand is active
+ContractService <-- DB: template data
+
+== Validate No Overlapping Contracts ==
+
+ContractService -> DB: Check for active contracts\nwith overlapping dates
+ContractService <-- DB: no overlaps found
+
+alt Overlapping Contract Found
+    ContractService -> Manager: Error: Employee has active contract\nfor overlapping period
+    note right: Only one running contract\nper employee at a time
+    return
+end
+
+== Contract Number Generation ==
+
+ContractService -> ContractService: Generate Contract Number\n(YYYYMMNNN format)
+note right: Format: {year}{month}{seq}\nExample: 202401045
+
+== Create Contract Record ==
+
+ContractService -> DB: Create draft contract\nwith generated number
+ContractService <-- DB: contract_id
+
+note right of DB
+    Contract fields (from ERD):
+    - number: 202401045
+    - employee_id: ref to hr_employee
+    - dep_company_id: ref to fop_company
+    - contract_template_id: ref to template
+    - contract_id: ref to hr_contract
+    - start_date: 2024-01-01
+    - end_date: 2024-12-31
+    - state: 'draft'
+end note
+
+== PDF Generation (With Facsimile) ==
+
+ContractService -> ReportService: Generate Contract PDF\n(contract_id, with_facsimile=true)
+activate ReportService
+
+ReportService -> DB: Queue report generation request
+ReportService <-- DB: queue_id
+
+ReportService -> DB: Retrieve contract, company,\nand employee data
+ReportService <-- DB: contract data
+
+ReportService -> ReportEngine: Render PDF\n(template, data, with_facsimile=true)
+activate ReportEngine
+note right of ReportEngine: Uses wkhtmltopdf\nto generate PDF\nwith facsimile stamp
+ReportService <-- ReportEngine: PDF binary data
+deactivate ReportEngine
+
+ReportService -> FileService: Store Attachment\n(name, file_data, res_model='fop.contract')
+activate FileService
+
+FileService -> DB: Save attachment with metadata\nand calculate checksum
+FileService <-- DB: attachment_id_1
+
+FileService -> DB: Log file upload operation\nfor audit trail
+
+ReportService <-- FileService: attachment_id_1
+deactivate FileService
+
+ReportService -> DB: Mark report generation\nas completed
+
+ContractService <-- ReportService: attachment_id_1
+deactivate ReportService
+
+== PDF Generation (Without Facsimile) ==
+
+ContractService -> ReportService: Generate Contract PDF\n(contract_id, with_facsimile=false)
+activate ReportService
+
+ReportService -> DB: Queue report generation request
+
+ReportService -> ReportEngine: Render PDF\n(template, data, with_facsimile=false)
+activate ReportEngine
+note right of ReportEngine: Clean PDF\nwithout stamp\nfor employee
+ReportService <-- ReportEngine: PDF binary data
+deactivate ReportEngine
+
+ReportService -> FileService: Store Attachment\n(name, file_data)
+activate FileService
+FileService -> DB: Save attachment with metadata
+FileService <-- DB: attachment_id_2
+FileService -> DB: Log file upload operation
+ReportService <-- FileService: attachment_id_2
+deactivate FileService
+
+ReportService -> DB: Mark report generation\nas completed
+
+ContractService <-- ReportService: attachment_id_2
+deactivate ReportService
+
+== Update Contract with Attachments ==
+
+ContractService -> DB: Link PDFs to contract\nand activate (state='running')
+ContractService <-- DB: success
+
+Manager <-- ContractService: HTTP 201 Created\n{\n  "contract_id": 123,\n  "number": "202401045",\n  "pdf_with_facsimile_url": "/api/attachments/456",\n  "pdf_without_facsimile_url": "/api/attachments/457"\n}
+deactivate ContractService
+
+note over Manager, DB
+    Contract is now active (state='running') with 2 PDF versions:
+    1. With facsimile - for company records
+    2. Without facsimile - for employee
+
+    HTTP 201 Created indicates successful resource creation
+end note
+
+@enduml

@@ -1,0 +1,300 @@
+---
+title: Billing Service
+description: Internal component view of the Billing Service
+---
+
+
+<Diagram
+  lang="mermaid"
+  chart="
+graph TD;
+
+    %% External Callers
+    APIController[<a href='../c3'>API Controllers</a>]
+    PayrollService[Payroll Service]
+
+    subgraph BillingService[Billing Service]
+
+        %% Core Components
+        subgraph CoreComponents[Core Components]
+            BillValidator[Bill Validator<br/>Validates bill data and business rules]
+            BillManager[Bill Manager<br/>CRUD operations for bills]
+            BillLineManager[Bill Line Manager<br/>Manages bill product lines]
+            BillReconciliation[Bill Reconciliation<br/>Matches bills to payments]
+        end
+
+        %% Business Logic
+        subgraph BusinessLogic[Business Logic]
+            AutoBillCreation[Auto Bill Creation<br/>Creates bills from payments]
+            BillPosting[Bill Posting Handler<br/>Posts bills to accounting]
+            BillValidation[Bill Validation Handler<br/>Validates bills before posting]
+            AmountCalculation[Amount Calculation<br/>Calculates totals from lines]
+        end
+
+        %% Data Access
+        subgraph DataAccess[Data Access Layer]
+            BillRepo[Bill Repository<br/>fop_bill CRUD]
+            BillLineRepo[Bill Line Repository<br/>fop_bill_line CRUD]
+            PaymentRepo[Payment Repository<br/>account_payment access]
+        end
+    end
+
+    %% External Services
+    EmployeeService[<a href='employee-service'>Employee Service</a>]
+    Odoo[💼 Odoo ERP<br/>Accounting Module]
+
+    %% External Systems
+    PostgresDB[(🗄️ PostgreSQL Database)]
+
+    %% Models
+    subgraph Models[Data Models]
+        FOPBill[fop_bill<br/>Bill records]
+        FOPBillLine[fop_bill_line<br/>Bill product lines]
+        AccountPayment[account_payment<br/>Payment records]
+    end
+
+    %% External to Core Components
+    APIController --> BillValidator
+    APIController --> BillManager
+    PayrollService --> AutoBillCreation
+
+    %% Core to Business Logic
+    BillValidator --> BillValidation
+    BillManager --> BillPosting
+    BillManager --> AutoBillCreation
+    AutoBillCreation --> BillLineManager
+    BillLineManager --> AmountCalculation
+    BillReconciliation --> PaymentRepo
+
+    %% Business Logic to External Services
+    BillValidation --> EmployeeService
+    AutoBillCreation --> EmployeeService
+    BillPosting -.->|JSONRPC| Odoo
+
+    %% Business Logic to Data Access
+    AutoBillCreation --> BillRepo
+    AutoBillCreation --> BillLineRepo
+    BillPosting --> BillRepo
+    BillValidation --> BillRepo
+    BillReconciliation --> BillRepo
+    AmountCalculation --> BillLineRepo
+
+    %% Data Access to Models
+    BillRepo --> FOPBill
+    BillLineRepo --> FOPBillLine
+    PaymentRepo --> AccountPayment
+
+    %% Models to Database
+    FOPBill --> PostgresDB
+    FOPBillLine --> PostgresDB
+    AccountPayment --> PostgresDB
+
+    %% Styling
+    classDef externalStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
+    classDef serviceStyle fill:#fff9c4,stroke:#f57f17,stroke-width:3px,color:#000
+    classDef coreStyle fill:#bbdefb,stroke:#1976d2,stroke-width:2px,color:#000
+    classDef logicStyle fill:#c8e6c9,stroke:#388e3c,stroke-width:2px,color:#000
+    classDef dataStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    classDef modelStyle fill:#ede7f6,stroke:#5e35b1,stroke-width:2px,color:#000
+    classDef dbStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,color:#000
+    classDef infraStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+    classDef layerStyle fill:#f5f5f5,stroke:#9e9e9e,stroke-width:2px,color:#000
+
+    class APIController,PayrollService externalStyle
+    class EmployeeService externalStyle
+    class BillingService serviceStyle
+    class CoreComponents,BusinessLogic,DataAccess,Models layerStyle
+    class BillValidator,BillManager,BillLineManager,BillReconciliation coreStyle
+    class AutoBillCreation,BillPosting,BillValidation,AmountCalculation logicStyle
+    class BillRepo,BillLineRepo,PaymentRepo dataStyle
+    class FOPBill,FOPBillLine,AccountPayment modelStyle
+    class PostgresDB dbStyle
+    class Odoo infraStyle
+"
+/>
+
+## Overview
+
+The **Billing Service** is a core component in the [FOP Backend](fop-backend) [Service Layer](../c3) responsible for managing FOP bills, automatic bill creation from payments, bill validation, and integration with Odoo accounting module for bill posting.
+
+See the [C3 Component Diagram](../c3) for how this service fits within the overall architecture.
+
+## Responsibilities
+
+### Core Functions
+1. **Bill Validation** - Validates bill data, amounts, and business rules before creation/posting
+2. **Bill Management** - Create, read, update, and delete bill records
+3. **Bill Line Management** - Manages product lines on bills, calculates totals
+4. **Bill Reconciliation** - Matches bills to payments for accounting reconciliation
+
+### Business Logic
+1. **Auto Bill Creation** - Automatically creates bills from batch payments
+2. **Bill Posting** - Posts validated bills to Odoo accounting module
+3. **Bill Validation Handler** - Comprehensive validation before posting
+4. **Amount Calculation** - Calculates bill totals from product lines
+
+## Components
+
+### Core Components Layer
+
+| Component | Purpose |
+|-----------|---------|
+| **Bill Validator** | Validates bill data, checks business rules, ensures employee exists |
+| **Bill Manager** | Handles CRUD operations, orchestrates bill lifecycle management |
+| **Bill Line Manager** | Manages product lines on bills (quantity, unit_price, total) |
+| **Bill Reconciliation** | Matches bills to payments, ensures accounting reconciliation |
+
+### Business Logic Layer
+
+| Component | Purpose |
+|-----------|---------|
+| **Auto Bill Creation** | Creates bills automatically from batch payments with "Total" product line |
+| **Bill Posting Handler** | Posts bills to Odoo accounting, updates state to 'posted' |
+| **Bill Validation Handler** | Validates bill completeness and correctness before posting |
+| **Amount Calculation** | Sums bill lines to calculate total, validates against payment amount |
+
+### Data Access Layer
+
+| Component | Purpose |
+|-----------|---------|
+| **Bill Repository** | CRUD operations for `fop_bill` table |
+| **Bill Line Repository** | CRUD operations for `fop_bill_line` table |
+| **Payment Repository** | Read access to `account_payment` table |
+
+## Data Models
+
+See the [ERD diagram](../../erd/fop-backend) for complete database schema.
+
+| Model | Tables | Purpose |
+|-------|--------|---------|
+| **fop_bill** | `fop_bill` | Bill records with employee, payment, company, dates, and state |
+| **fop_bill_line** | `fop_bill_line` | Product lines on bills (product, quantity, unit_price, total) |
+| **account_payment** | `account_payment` | Payment records linked to bills |
+
+## Integration Points
+
+### Internal Services
+- **Payroll Service** - Triggers auto bill creation during batch payment processing
+- **[Employee Service](employee-service)** - Validates employee exists before bill creation
+- **[API Controllers](../c3)** - Access bill management functionality
+
+### External Systems
+- **[Odoo ERP](../c2)** - Posts bills to accounting module via JSONRPC
+- **[PostgreSQL Database](../../erd/fop-backend)** - Persistent storage for all bill data
+
+## Usage in Workflows
+
+### Batch Payment Processing
+Primary workflow shown in [Batch Payment Processing sequence](../../sequence/batch-payment-processing):
+
+1. [Account Manager](../../glossary/actors#account-manager) validates batch payment in Odoo
+2. Payroll Service processes each payment in batch
+3. **Billing Service auto-creates bills** for payments without existing bills
+4. Creates single "Total" product line matching payment amount
+5. Links bill to payment for reconciliation
+6. Logs operation in sync service
+7. Returns summary of bills created
+
+### Bill Lifecycle
+1. **Draft** - Bill created, can be edited
+2. **Validated** - Bill reviewed and approved by Account Manager
+3. **Posted** - Bill posted to Odoo accounting (via Bill Posting Handler)
+4. **Paid** - Payment reconciled with bill
+
+## Auto Bill Creation
+
+When processing batch payments, the Billing Service automatically creates bills for any payment that doesn't have a linked bill:
+
+**Bill Structure:**
+```json
+{
+  "employee_id": 123,
+  "payment_id": 456,
+  "company_id": 5,
+  "date": "2024-01-15",
+  "state": "draft"
+}
+```
+
+**Single Product Line:**
+```json
+{
+  "bill_id": 789,
+  "product_id": "total_product",
+  "quantity": 1,
+  "unit_price": 5000.00,
+  "total": 5000.00
+}
+```
+
+**Why "Total" Product?**
+- Simplifies automated bill creation
+- Single line matches payment amount exactly
+- Reduces complexity for batch processing
+- Easy reconciliation with payment
+
+## Key Business Rules
+
+1. **Payment-Bill Link** - One payment can have one bill (1:1 relationship)
+2. **Amount Match** - Bill total must equal linked payment amount exactly
+3. **Date Match** - Bill date should match payment date
+4. **Draft State** - Auto-created bills start in 'draft' state for review
+5. **Employee Validation** - Employee must exist and be active FOP
+6. **Idempotent Creation** - Safe to run multiple times (skips if bill exists)
+7. **No Empty Bills** - At least one bill line required
+
+## Bill States
+
+| State | Description | Transitions |
+|-------|-------------|-------------|
+| **draft** | Bill created, can be edited | → validated (manual review) |
+| **validated** | Bill reviewed and approved | → posted (via Bill Posting) |
+| **posted** | Bill posted to Odoo accounting | → paid (after reconciliation) |
+| **paid** | Bill fully paid and reconciled | (terminal state) |
+| **cancelled** | Bill cancelled, not posted | (terminal state) |
+
+## Error Handling
+
+| Error Type | HTTP Status | Handling |
+|------------|-------------|----------|
+| **Employee Not Found** | 404 | Validate employee via Employee Service |
+| **Payment Not Found** | 404 | Check payment_id exists in account_payment |
+| **Bill Already Exists** | 409 | Skip creation (idempotent behavior) |
+| **Amount Mismatch** | 400 | Validate bill total equals payment amount |
+| **Invalid State Transition** | 400 | Check valid state transitions before update |
+| **Odoo Integration Failed** | 500 | Log error, keep bill in 'validated' state, retry later |
+| **Missing Bill Lines** | 400 | Require at least one bill line |
+
+## Integration with Odoo
+
+### Bill Posting Flow
+1. Bill validated in FOP Backend
+2. Bill Posting Handler called
+3. Sends bill data to Odoo via JSONRPC
+4. Odoo creates accounting entry
+5. Odoo returns success/failure
+6. Update bill state to 'posted' in FOP Backend
+7. Log operation for audit
+
+### Data Synchronization
+- Bills posted to Odoo accounting module
+- Payment reconciliation handled in Odoo
+- State updates synced back to FOP Backend
+- Error handling with retry logic
+
+## Performance Considerations
+
+### Batch Processing
+- Process multiple bills in single transaction
+- Bulk insert bill lines for performance
+- Efficient overlap checks before creation
+
+### Reconciliation
+- Indexed on (payment_id, state) for fast lookups
+- Optimized queries for unreconciled bills
+- Batch reconciliation support
+
+### Caching
+- Product catalog cached in memory
+- Company data cached per request
+- Bill records not cached (frequently updated)

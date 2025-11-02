@@ -4,6 +4,9 @@
     "index",
     "admin-frontend",
     "fop-frontend",
-    "fop-backend"
+    "fop-backend",
+    "employee-service",
+    "contract-service",
+    "billing-service"
   ]
 }

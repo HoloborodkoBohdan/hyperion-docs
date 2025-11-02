@@ -1,0 +1,212 @@
+---
+title: Employee Service
+description: Internal component view of the Employee Service
+---
+
+<Diagram
+  lang="mermaid"
+  chart="
+graph TD;
+
+    %% External Callers
+    APIController[<a href='../c3'>API Controllers</a>]
+    WebController[<a href='../c3'>Web Controllers</a>]
+    ContractService[Contract Service]
+    BillingService[Billing Service]
+
+    subgraph EmployeeService[Employee Service]
+
+        %% Core Components
+        subgraph CoreComponents[Core Components]
+            EmployeeValidator[Employee Validator<br/>Validates employee data and FOP status]
+            EmployeeManager[Employee Manager<br/>CRUD operations for employee records]
+            KVEDValidator[KVED Validator<br/>Validates activity codes for compliance]
+            ResponsibleManagerAssignment[Responsible Manager Assignment<br/>Assigns Account Managers to employees]
+        end
+
+        %% Business Logic
+        subgraph BusinessLogic[Business Logic]
+            FOPRegistration[FOP Registration Handler<br/>Manages FOP registration workflow]
+            TaxGroupValidator[Tax Group Validator<br/>Validates 3rd group tax status]
+            EmployeeStatusManager[Employee Status Manager<br/>Manages active/inactive states]
+            DataEnrichment[Data Enrichment<br/>Syncs with Tax Inspection data]
+        end
+
+        %% Data Access
+        subgraph DataAccess[Data Access Layer]
+            FOPEmployeeRepo[FOP Employee Repository<br/>fop_employee CRUD]
+            HREmployeeRepo[HR Employee Repository<br/>hr_employee access]
+            KVEDRepo[KVED Repository<br/>KVED code lookups]
+        end
+    end
+
+    %% External Systems
+    PostgresDB[(🗄️ PostgreSQL Database)]
+    TaxInspection[🏛️ Tax Inspection Registry]
+
+    %% Models
+    subgraph Models[Data Models]
+        FOPEmployee[fop_employee<br/>FOP-specific data]
+        HREmployee[hr_employee<br/>Employee base data]
+        KVEDCodes[KVED codes<br/>Activity classification]
+    end
+
+    %% External to Core Components
+    APIController --> EmployeeValidator
+    APIController --> EmployeeManager
+    WebController --> EmployeeManager
+    WebController --> ResponsibleManagerAssignment
+    ContractService --> EmployeeValidator
+    BillingService --> EmployeeValidator
+
+    %% Core to Business Logic
+    EmployeeValidator --> TaxGroupValidator
+    EmployeeValidator --> KVEDValidator
+    EmployeeManager --> FOPRegistration
+    EmployeeManager --> EmployeeStatusManager
+    EmployeeManager --> DataEnrichment
+    KVEDValidator --> KVEDRepo
+
+    %% Business Logic to Data Access
+    FOPRegistration --> FOPEmployeeRepo
+    FOPRegistration --> HREmployeeRepo
+    EmployeeStatusManager --> FOPEmployeeRepo
+    TaxGroupValidator --> FOPEmployeeRepo
+    DataEnrichment --> FOPEmployeeRepo
+    ResponsibleManagerAssignment --> FOPEmployeeRepo
+
+    %% Data Access to Models
+    FOPEmployeeRepo --> FOPEmployee
+    HREmployeeRepo --> HREmployee
+    KVEDRepo --> KVEDCodes
+
+    %% Models to Database
+    FOPEmployee --> PostgresDB
+    HREmployee --> PostgresDB
+    KVEDCodes --> PostgresDB
+
+    %% External System Integration
+    DataEnrichment -.->|Fetch tax data| TaxInspection
+
+    %% Styling
+    classDef externalStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
+    classDef serviceStyle fill:#fff9c4,stroke:#f57f17,stroke-width:3px,color:#000
+    classDef coreStyle fill:#bbdefb,stroke:#1976d2,stroke-width:2px,color:#000
+    classDef logicStyle fill:#c8e6c9,stroke:#388e3c,stroke-width:2px,color:#000
+    classDef dataStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    classDef modelStyle fill:#ede7f6,stroke:#5e35b1,stroke-width:2px,color:#000
+    classDef dbStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,color:#000
+    classDef infraStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+    classDef layerStyle fill:#f5f5f5,stroke:#9e9e9e,stroke-width:2px,color:#000
+
+    class APIController,WebController,ContractService,BillingService externalStyle
+    class EmployeeService serviceStyle
+    class CoreComponents,BusinessLogic,DataAccess,Models layerStyle
+    class EmployeeValidator,EmployeeManager,KVEDValidator,ResponsibleManagerAssignment coreStyle
+    class FOPRegistration,TaxGroupValidator,EmployeeStatusManager,DataEnrichment logicStyle
+    class FOPEmployeeRepo,HREmployeeRepo,KVEDRepo dataStyle
+    class FOPEmployee,HREmployee,KVEDCodes modelStyle
+    class PostgresDB dbStyle
+    class TaxInspection infraStyle
+"
+/>
+
+## Overview
+
+The **Employee Service** is a core component in the [FOP Backend](fop-backend) [Service Layer](../c3) responsible for managing [FOP employee](../../glossary/actors#fop-employee) data, validation, and integration with external systems.
+
+See the [C3 Component Diagram](../c3) for how this service fits within the overall architecture.
+
+## Responsibilities
+
+### Core Functions
+1. **Employee Validation** - Validates employee existence, FOP status, and data integrity
+2. **Employee Management** - Create, read, update, and delete employee records
+3. **KVED Code Validation** - Ensures activity codes comply with Ukrainian regulations
+4. **Responsible Manager Assignment** - Assigns [Account Managers](../../glossary/actors#account-manager) to [FOP employees](../../glossary/actors#fop-employee)
+
+### Business Logic
+1. **FOP Registration Handler** - Manages the workflow for registering new FOP employees
+2. **Tax Group Validation** - Validates employees belong to 3rd tax group
+3. **Employee Status Management** - Tracks active/inactive employee states
+4. **Data Enrichment** - Syncs and enriches employee data from Tax Inspection Registry
+
+## Components
+
+### Core Components Layer
+
+| Component | Purpose |
+|-----------|---------|
+| **Employee Validator** | Validates employee data, checks FOP status, ensures data integrity before operations |
+| **Employee Manager** | Handles CRUD operations, orchestrates employee lifecycle management |
+| **KVED Validator** | Validates KVED activity codes against allowed classifications and compliance rules |
+| **Responsible Manager Assignment** | Manages Account Manager assignments to FOP employees |
+
+### Business Logic Layer
+
+| Component | Purpose |
+|-----------|---------|
+| **FOP Registration Handler** | Orchestrates new FOP employee registration workflow |
+| **Tax Group Validator** | Ensures employees are in correct tax group (3rd group for FOPs) |
+| **Employee Status Manager** | Manages employee state transitions (active/inactive) |
+| **Data Enrichment** | Fetches and syncs data from Tax Inspection Registry |
+
+### Data Access Layer
+
+| Component | Purpose |
+|-----------|---------|
+| **FOP Employee Repository** | CRUD operations for `fop_employee` table |
+| **HR Employee Repository** | Read access to `hr_employee` table |
+| **KVED Repository** | Lookup and validation of KVED codes |
+
+## Data Models
+
+See the [ERD diagram](../../erd/fop-backend) for complete database schema.
+
+| Model | Tables | Purpose |
+|-------|--------|---------|
+| **fop_employee** | `fop_employee` | FOP-specific employee data (tax ID, KVED codes, registration) |
+| **hr_employee** | `hr_employee` | Base employee data (name, contact info, status) |
+| **KVED codes** | KVED classification tables | Ukrainian activity classification codes |
+
+## Integration Points
+
+### Internal Services
+- **[Contract Service](contract-service)** - Uses Employee Validator to verify employee before creating contracts
+- **[Billing Service](billing-service)** - Uses Employee Validator to verify employee before creating bills
+- **[API/Web Controllers](../c3)** - Access employee management and validation functionality
+
+### External Systems
+- **Tax Inspection Registry** - 2-way sync for employee tax data and registration status
+- **[PostgreSQL Database](../../erd/fop-backend)** - Persistent storage for all employee data
+
+## Usage in Workflows
+
+### Contract Creation
+Referenced in [Contract Creation sequence](../../sequence/contract-creation):
+1. Contract Service calls Employee Validator
+2. Validates employee exists and is active
+3. Retrieves employee details for contract
+
+### Batch Payment Processing
+Referenced in [Batch Payment Processing sequence](../../sequence/batch-payment-processing):
+1. Validates employee exists for each payment
+2. Retrieves employee data for bill creation
+3. Ensures employee is active FOP
+
+## Key Business Rules
+
+1. **FOP Status Required** - Employee must have `is_fop=True` flag set
+2. **KVED Compliance** - At least one valid KVED code required for registration
+3. **Tax Group Validation** - FOP employees must be in 3rd tax group
+4. **Unique Tax ID** - Ukrainian tax ID (РНОКПП) must be unique per employee
+5. **Responsible Manager** - Each FOP employee must have an assigned Account Manager
+
+## Error Handling
+
+| Error Type | Handling |
+|------------|----------|
+| **Employee Not Found** | Return HTTP 404 with employee ID |
+| **Invalid KVED Code** | Return HTTP 400 with validation details |
+| **Duplicate Tax ID** | Return HTTP 409 with conflict details |
+| **Tax Sync Failure** | Log error, queue retry, notify admin |
