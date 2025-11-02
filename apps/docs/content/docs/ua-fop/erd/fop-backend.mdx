@@ -1,0 +1,88 @@
+---
+title: FOP Backend ERD
+description: Complete Entity Relationship Diagram for FOP Backend Service
+---
+
+This diagram shows all data entities managed by the FOP Backend service, organized by the service layer that primarily manages them.
+
+
+<Diagram lang="plantuml" path="erd/fop-backend.puml" alt="FOP Backend Entity Relationship Diagram" />
+
+## Entity Groups by Service
+
+### Employee Service
+Manages FOP employee profiles, KVED compliance, tax registration, and banking:
+- **hr_employee** - Extended employee model with FOP-specific fields
+- **fop_kved** - KVED activity assignments per employee
+- **fop_kved_list** - Master list of Ukrainian economic activity codes
+- **account_tax_inspection** - Tax office registration data
+- **res_users** - Account managers responsible for employees
+- **employee_bank** - Employee bank accounts for receiving payments
+
+### Contract Service
+Handles contract lifecycle, templates, and document generation:
+- **fop_contract** - Main contract entity with state management
+- **fop_contract_type** - Contract type configuration
+- **fop_contract_template** - Bilingual document templates
+- **fop_contract_template_line** - Hierarchical template blocks
+- **fop_company** - Employer details and signing information
+- **hr_contract** - Extended HR contract with FOP type
+
+### Payroll Service
+Manages billing, payments, products, and pricing:
+- **fop_bill** - Bills/invoices for FOP services
+- **fop_bill_line** - Individual bill line items
+- **fop_product** - Billable products/services catalog
+- **fop_price_history** - Historical pricing data
+- **fop_act** - Acceptance acts (Ukrainian business practice)
+- **fop_bank_statement_line** - Bank transaction imports
+- **account_payment** - Individual payment records
+- **account_batch_payment** - Batch payment processing
+- **payroll_cost_center** - Financial tracking
+
+### Tax Sync Service
+Handles bidirectional synchronization between FOP Backend and Odoo:
+- **tax_sync_log** - Audit log of all sync operations (create, update, delete)
+- **tax_sync_status** - Current sync status for each entity (last sync time, conflicts)
+- **tax_inspection_cache** - Cached tax inspection data to reduce external API calls
+
+### Report Service
+Manages PDF report generation and queuing:
+- **report_queue** - Queue of report generation requests (status, parameters, output)
+- **report_template** - Report template definitions (type, path, active status)
+
+### File Service
+Manages file storage, attachments, and cloud sync:
+- **attachment** - File attachments (contract PDFs, documents, uploads)
+- **file_storage_log** - Audit log of file operations (upload, download, sync to cloud)
+
+## State Management
+
+### Contract States
+- **draft** → **running** → **inactive**
+- Only one running contract per employee at a time
+
+### Bill States
+- **draft** ⟷ **posted**
+- Cannot modify posted bills
+- Posting requires `amount_diff = 0`
+
+
+## Data Constraints
+
+### Unique Constraints
+- `fop_contract.number` - YYYYMMNNN format
+- `fop_product.name` - Product names must be unique
+- `fop_company.name` - Company names must be unique
+
+### Business Rules
+- One running contract per employee (no overlapping dates)
+- One "main" KVED per employee
+- Bill total must match payment amount before posting
+- Cannot delete `fop_kved_list` (must archive)
+
+## Related Documentation
+
+- [Glossary](../glossary) - Detailed definitions of all entities
+- [FOP Backend Service](../c4/services/fop-backend) - Service architecture
+- [Level 2 Container](../c4/c2) - System containers

@@ -10,10 +10,10 @@ description: Container-level view of the UA FOP Management System
 graph TD;
 
     %% Users
-    FOPManager[<a href='../glossary#fop-manager'>👤 FOP Manager<br/>Manages FOP employees, contracts, and compliance</a>]
-    AccountManager[<a href='../glossary#account-manager'>👤 Account Manager<br/>Responsible for specific FOP employees</a>]
-    HRManager[<a href='../glossary#hr-manager'>👤 HR Manager<br/>Manages employee contracts and data</a>]
-    FOP[<a href='../glossary#fop-employee'>👤 FOP Employee<br/>Ukrainian individual entrepreneur</a>]
+    FOPManager[<a href='../glossary/actors#fop-manager'>👤 FOP Manager<br/>Manages FOP employees, contracts, and compliance</a>]
+    AccountManager[<a href='../glossary/actors#account-manager'>👤 Account Manager<br/>Responsible for specific FOP employees</a>]
+    HRManager[<a href='../glossary/actors#hr-manager'>👤 HR Manager<br/>Manages employee contracts and data</a>]
+    FOP[<a href='../glossary/actors#fop-employee'>👤 FOP Employee<br/>Ukrainian individual entrepreneur</a>]
 
     %% Main System
     subgraph UAFOPSystem [<a href='c1'>🎯 UA FOP Management System</a>]
@@ -43,7 +43,7 @@ graph TD;
 
     %% Internal relationships
     AdminFrontend -->FOPBackend
-    FOPBackend -->|jsonrpc| Odoo
+    FOPBackend <-->|2-way sync<br/>jsonrpc| Odoo
     FOPBackend --> PostgresDB
     FOPFrontend -->FOPBackend
 

@@ -2,10 +2,8 @@
   "title": "Documentation",
   "pages": [
     "index",
+    "---Projects---",
     "ua-fop",
-    "---Guides---",
-    "quick-start",
-    "diagramming",
     "---OpenAPI---",
     "openapi"
   ]

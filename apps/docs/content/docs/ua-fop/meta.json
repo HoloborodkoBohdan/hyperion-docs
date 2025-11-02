@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "glossary",
-    "c4"
+    "c4",
+    "erd"
   ]
 }

@@ -1,0 +1,57 @@
+---
+title: Actors & Roles
+description: Key actors and their roles in the UA FOP Management System
+---
+
+## System Users
+
+### FOP Manager
+**Primary administrator** of the FOP management system with full access to all functionality.
+
+**Responsibilities:**
+- Manage FOP employee records and registration data
+- Create and maintain FOP contracts and templates
+- Configure contract types
+- Monitor KVED compliance
+- Oversee billing and payment processes
+
+**Security Group:** `ua_fop.group_fop_manager`
+
+### Account Manager
+**Responsible manager** assigned to specific FOP employees.
+
+**Responsibilities:**
+- Manage assigned FOP employees
+- Process batch payments and validate amounts
+- Post FOP bills after verification
+- Import and manage bank statements
+- Coordinate with FOPs on contract and payment matters
+
+**Access Level:** Accounting module access + FOP billing limited to assigned employees
+
+**Security Group:** `ua_fop.group_fop_user`
+**Field Reference:** `hr.employee.responsible_account_manager_id`
+
+### HR Manager
+**Human resources specialist** managing employee data.
+
+**Responsibilities:**
+- Create and maintain employee records
+- Manage HR contracts and set contract types
+- Maintain employee personal data
+
+**Access Level:** HR module access + basic FOP employee data
+**Related Models:** `hr.employee`, `hr.contract`
+
+## Business Entities
+
+### FOP Employee
+**Ukrainian individual entrepreneur** (Фізична Особа-Підприємець) registered as a contractor providing services to the company.
+
+**Characteristics:**
+- Has Ukrainian tax registration
+- Assigned KVED business activity codes
+- May be in 3rd tax group
+- Receives payments for services rendered
+
+**Related Model:** `hr.employee` (with `is_fop=True`)

@@ -21,7 +21,7 @@ graph TD;
             ContractService[Contract Service - Handles creation, validation, and archiving of contracts]
             PayrollService[Payroll Service - Salary and payment processing logic]
             ReportService[Report Service - Generates PDF reports via Report Engine]
-            TaxSyncService[Tax Sync Service - Synchronizes tax data with Tax Inspection]
+            TaxSyncService[Tax Sync Service - Bidirectional sync with Odoo ERP and Tax Inspection]
             FileService[File Service - Stores and retrieves files from cloud storage]
         end
         
@@ -53,13 +53,14 @@ graph TD;
     EmployeeService --> DatabaseAdapter
     ContractService --> DatabaseAdapter
     PayrollService --> DatabaseAdapter
+    TaxSyncService --> DatabaseAdapter
     DatabaseAdapter --> PostgresDB
 
     %% External interfaces
     ReportService -.-> ReportEngine
-    TaxSyncService -.-> TaxInspection
+    TaxSyncService <-.->|2-way sync| TaxInspection
+    TaxSyncService <-.->|2-way sync| Odoo
     FileService -.-> FileStorage
-    APIHandlers -.-> Odoo
     
     %% Service relationships
     AdminFrontend -.-> FOPBackend

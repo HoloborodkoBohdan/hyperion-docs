@@ -1,76 +1,6 @@
 ---
 title: Glossary
-description: This glossary provides definitions for all key terms, actors, models, and concepts used in the UA FOP Management System.
----
-
-## Actors & Roles
-
-### FOP Manager
-**Role:** Primary administrator of the FOP management system
-
-**Responsibilities:**
-- Manages FOP employee records and registration data
-- Creates and maintains FOP contracts
-- Configures contract types and templates
-- Monitors KVED compliance
-- Oversees billing and payment processes
-
-**Access Level:** Full access to all FOP functionality
-
-**Security Group:** `ua_fop.group_fop_manager`
-
----
-
-### Account Manager
-**Role:** Responsible manager assigned to specific FOP employees
-
-**Responsibilities:**
-- Manages assigned FOP employees
-- Reviews bills and payments for assigned employees
-- Ensures compliance for assigned portfolio
-- Coordinates with FOPs on contract and payment matters
-- Processes batch payments for FOP employees
-- Validates payment amounts against bills
-- Posts FOP bills after verification
-- Manages bank account information
-- Imports bank statements
-
-**Access Level:** Accounting module access + FOP billing limited to assigned employees
-
-**Security Group:** `ua_fop.group_fop_user`
-
-**Field Reference:** `hr.employee.responsible_account_manager_id`
-
----
-
-### HR Manager
-**Role:** Human resources specialist
-
-**Responsibilities:**
-- Creates employee records
-- Manages HR contracts
-- Sets contract types for employees
-- Maintains employee personal data
-
-**Access Level:** HR module access + basic FOP employee data
-
-**Related Models:** `hr.employee`, `hr.contract`
-
----
-
-### FOP Employee
-**Role:** Ukrainian individual entrepreneur (contractor)
-
-**Definition:** A natural person registered as FOP (Фізична Особа-Підприємець) in Ukraine, providing services to the company
-
-**Characteristics:**
-- Has Ukrainian tax registration
-- Assigned KVED business activity codes
-- May be in 3rd tax group
-- Receives payments for services rendered
-
-**Related Models:** `hr.employee` (with `is_fop=True`)
-
+description: Definitions for key terms, models, and concepts in the UA FOP Management System
 ---
 
 ## Business Concepts
@@ -223,12 +153,17 @@ description: This glossary provides definitions for all key terms, actors, model
 2. **Draft** - Bill lines added with products and hours
 3. **Posted** - Validated and finalized (amount must match payment)
 
+**Key Fields:**
+- `employee_id` - FOP employee receiving payment
+- `payment_id` - Linked payment record
+- `cost_center_id` - Assigned cost center for financial tracking
+
 **Key Validations:**
 - Amount must match linked payment (`amount_diff = 0`)
 - Cannot modify/delete posted bills
 - Must be set to draft to make changes
 
-**Related:** `fop.bill.line`, `account.payment`
+**Related:** `fop.bill.line`, `account.payment`, `payroll.cost.center`
 
 ---
 
@@ -354,7 +289,7 @@ description: This glossary provides definitions for all key terms, actors, model
 - `fop.contract.pdf_with_facsimile_id`
 - `fop.contract.pdf_without_facsimile_id`
 
-**Model:** `ir.attachment`
+**Model:** `attachment`
 
 **Purpose:** Store generated contract PDFs
 
@@ -595,47 +530,4 @@ draft → running → inactive
 
 **Input:** Rendered HTML from QWeb templates
 
-**Output:** `ir.attachment` records linked to `fop.contract`
-
----
-
-## Glossary Meta-Information
-
-**Document Version:** 1.0.8 (matches module version)
-
-**Last Updated:** 2025
-
-**Related Documentation:**
-- [Level 1 - System Context](./c1.mdx)
-- [Entity Relationship Diagram](../01_ERD.md)
-- [Architecture Overview](../02_Architecture_Overview.md)
-- [Template Variables Reference](../TEMPLATE_VARIABLES.md)
-
----
-
-## Abbreviations
-
-| Abbreviation | Full Form | Meaning |
-|--------------|-----------|---------|
-| FOP | Фізична Особа-Підприємець | Individual Entrepreneur |
-| KVED | Класифікація Видів Економічної Діяльності | Classification of Economic Activities |
-| UA | Ukraine / Ukrainian | Country code / language |
-| EN | English | Language code |
-| HR | Human Resources | Employee management |
-| EMA | Employee Management Application | Internal system reference |
-| PDF | Portable Document Format | Document file format |
-| QWeb | Query Web | Odoo templating engine |
-
----
-
-## External References
-
-### Ukrainian Government Resources
-- **KVED Classifier:** Official Ukrainian economic activity codes
-- **Tax Inspection Registry:** DPS (Державна податкова служба)
-- **FOP Regulations:** Ukrainian Tax Code, Chapter 1, Section 4
-
-### Odoo Documentation
-- [Odoo ORM API](https://www.odoo.com/documentation/17.0/developer/reference/backend/orm.html)
-- [Odoo Views](https://www.odoo.com/documentation/17.0/developer/reference/backend/views.html)
-- [Odoo Security](https://www.odoo.com/documentation/17.0/developer/reference/backend/security.html)
+**Output:** `attachment` records linked to `fop.contract`

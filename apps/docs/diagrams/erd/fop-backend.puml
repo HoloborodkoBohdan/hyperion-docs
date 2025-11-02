@@ -1,0 +1,336 @@
+@startuml
+!theme plain
+
+' Employee Service
+package "Employee Service" as EmployeeService {
+    entity hr_employee {
+        id : int
+        is_fop : bool
+        is_employed : bool
+        blueprint_id : string
+        date_of_reg : date
+        reg_number : string
+        date_of_single_tax : date
+        is_3rd_group_fop : bool
+        address_english : text
+        address_ukrainian : text
+        firstname_en : string
+        lastname_en : string
+        tax_inspection_id : int
+        responsible_account_manager_id : int
+        contract_type_id : int
+    }
+
+    entity fop_kved {
+        id : int
+        kved_list_id : int
+        employee_id : int
+        date_from : date
+        is_active : bool
+        is_main : bool
+    }
+
+    entity fop_kved_list {
+        id : int
+        name : string
+        code : string
+        text : string
+    }
+
+    entity account_tax_inspection {
+        id : int
+        name : string
+    }
+
+    entity res_users {
+        id : int
+        name : string
+        login : string
+    }
+
+    entity employee_bank {
+        id : int
+        employee_id : int
+        bank_id : int
+        acc_number : string
+        swift : string
+    }
+}
+
+' Contract Service
+package "Contract Service" as ContractService {
+    entity fop_contract {
+        id : int
+        number : string
+        start_date : date
+        end_date : date
+        state : string
+        dep_company_id : int
+        employee_id : int
+        contract_id : int
+        contract_template_id : int
+        pdf_with_facsimile_id : int
+        pdf_without_facsimile_id : int
+    }
+
+    entity fop_contract_type {
+        id : int
+        name : string
+        code : string
+        subcode : string
+    }
+
+    entity fop_contract_template {
+        id : int
+        name : string
+        ttype : string
+        en_part : text
+        ua_part : text
+        contract_type_id : int
+        valid_from : date
+    }
+
+    entity fop_contract_template_line {
+        id : int
+        template_id : int
+        number : string
+        content_ua : text
+        content_en : text
+    }
+
+    entity fop_company {
+        id : int
+        name : string
+        company_contacts : text
+        agreement_details_ua : text
+        agreement_details_en : text
+        signing_1_ua : string
+        signing_1_en : string
+        signing_2_ua : string
+        signing_2_en : string
+        signing_3_ua : string
+        signing_3_en : string
+        prefix_company_ua : string
+        prefix_company_en : string
+        facsimile_image : binary
+    }
+
+    entity hr_contract {
+        id : int
+        deposit_contract_type_id : int
+    }
+}
+
+' Payroll Service
+package "Payroll Service" as PayrollService {
+    entity fop_bill {
+        id : int
+        number : string
+        date : date
+        employee_id : int
+        payment_id : int
+        cost_center_id : int
+        state : string
+        total : decimal
+        amount_diff : decimal
+    }
+
+    entity fop_bill_line {
+        id : int
+        bill_id : int
+        product_id : int
+        hours : decimal
+        price : decimal
+        unit : string
+        total_price : decimal
+    }
+
+    entity fop_product {
+        id : int
+        name : string
+        name_en : string
+        name_ua : string
+        unit : string
+        price : decimal
+        contract_type_id : int
+    }
+
+    entity fop_price_history {
+        id : int
+        product_id : int
+        date : date
+        price : decimal
+        notes : text
+    }
+
+    entity fop_act {
+        id : int
+        bill_id : int
+        number : string
+        date : date
+    }
+
+    entity fop_bank_statement_line {
+        id : int
+        employee_id : int
+        bank_account_id : int
+        date : date
+        amount : decimal
+        description : text
+    }
+
+    entity account_payment {
+        id : int
+        amount : decimal
+        date : date
+        partner_id : int
+    }
+
+    entity account_batch_payment {
+        id : int
+        name : string
+        state : string
+    }
+
+    entity payroll_cost_center {
+        id : int
+        name : string
+    }
+}
+
+' Tax Sync Service
+package "Tax Sync Service" as TaxSyncService {
+    entity tax_sync_log {
+        id : int
+        entity_type : string
+        entity_id : int
+        operation : string
+        direction : string
+        status : string
+        started_at : datetime
+        completed_at : datetime
+        error_message : text
+        request_data : json
+        response_data : json
+    }
+
+    entity tax_sync_status {
+        id : int
+        entity_type : string
+        entity_id : int
+        last_sync_at : datetime
+        sync_status : string
+        odoo_id : int
+        fop_id : int
+        conflict_data : json
+    }
+
+    entity tax_inspection_cache {
+        id : int
+        tax_inspection_id : int
+        cache_key : string
+        cache_data : json
+        cached_at : datetime
+        expires_at : datetime
+    }
+}
+
+' Report Service
+package "Report Service" as ReportService {
+    entity report_queue {
+        id : int
+        report_type : string
+        entity_id : int
+        status : string
+        requested_by : int
+        requested_at : datetime
+        generated_at : datetime
+        attachment_id : int
+        error_message : text
+        parameters : json
+    }
+
+    entity report_template {
+        id : int
+        name : string
+        report_type : string
+        template_path : string
+        is_active : bool
+    }
+}
+
+' File Service
+package "File Service" as FileService {
+    entity attachment {
+        id : int
+        name : string
+        file_size : int
+        mimetype : string
+        datas : binary
+        res_model : string
+        res_id : int
+        uploaded_by : int
+        uploaded_at : datetime
+        checksum : string
+    }
+
+    entity file_storage_log {
+        id : int
+        attachment_id : int
+        operation : string
+        status : string
+        cloud_path : string
+        timestamp : datetime
+        error_message : text
+    }
+}
+
+' Relationships
+
+' Employee Service relationships
+hr_employee ||--o{ fop_kved : "has"
+fop_kved }o--|| fop_kved_list : "references"
+hr_employee }o--|| account_tax_inspection : "registered at"
+hr_employee }o--|| res_users : "managed by"
+hr_employee }o--|| fop_contract_type : "has type"
+hr_employee ||--o{ employee_bank : "has bank accounts"
+
+' Contract Service relationships
+fop_contract }o--|| hr_employee : "for employee"
+fop_contract }o--|| fop_company : "issued by"
+fop_contract }o--|| fop_contract_template : "uses template"
+fop_contract }o--|| hr_contract : "linked to"
+fop_contract_template ||--o{ fop_contract_template_line : "contains"
+fop_contract_template }o--|| fop_contract_type : "for type"
+hr_contract }o--|| fop_contract_type : "deposit type"
+
+' Payroll Service relationships
+fop_bill }o--|| hr_employee : "for employee"
+fop_bill }o--|| account_payment : "linked to"
+fop_bill }o--|| payroll_cost_center : "assigned to"
+fop_bill ||--o{ fop_bill_line : "contains"
+fop_bill_line }o--|| fop_product : "references"
+fop_product }o--|| fop_contract_type : "for type"
+fop_product ||--o{ fop_price_history : "price history"
+fop_act }o--|| fop_bill : "for bill"
+fop_bank_statement_line }o--|| hr_employee : "for employee"
+fop_bank_statement_line }o--|| employee_bank : "to account"
+
+' Cross-service relationships
+account_payment }o--|| account_batch_payment : "part of batch"
+
+' Tax Sync Service relationships
+tax_inspection_cache }o--|| account_tax_inspection : "caches data for"
+
+' Report Service relationships
+report_queue }o--|| res_users : "requested by"
+report_queue }o--|| attachment : "generated file"
+report_queue }o--|| report_template : "uses template"
+
+' File Service relationships
+attachment }o--|| res_users : "uploaded by"
+file_storage_log }o--|| attachment : "logs operations for"
+fop_contract }o--|| attachment : "pdf with facsimile"
+fop_contract }o--|| attachment : "pdf without facsimile"
+
+@enduml
