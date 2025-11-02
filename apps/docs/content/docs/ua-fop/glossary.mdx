@@ -1,0 +1,641 @@
+---
+title: Glossary
+description: This glossary provides definitions for all key terms, actors, models, and concepts used in the UA FOP Management System.
+---
+
+## Actors & Roles
+
+### FOP Manager
+**Role:** Primary administrator of the FOP management system
+
+**Responsibilities:**
+- Manages FOP employee records and registration data
+- Creates and maintains FOP contracts
+- Configures contract types and templates
+- Monitors KVED compliance
+- Oversees billing and payment processes
+
+**Access Level:** Full access to all FOP functionality
+
+**Security Group:** `ua_fop.group_fop_manager`
+
+---
+
+### Account Manager
+**Role:** Responsible manager assigned to specific FOP employees
+
+**Responsibilities:**
+- Manages assigned FOP employees
+- Reviews bills and payments for assigned employees
+- Ensures compliance for assigned portfolio
+- Coordinates with FOPs on contract and payment matters
+- Processes batch payments for FOP employees
+- Validates payment amounts against bills
+- Posts FOP bills after verification
+- Manages bank account information
+- Imports bank statements
+
+**Access Level:** Accounting module access + FOP billing limited to assigned employees
+
+**Security Group:** `ua_fop.group_fop_user`
+
+**Field Reference:** `hr.employee.responsible_account_manager_id`
+
+---
+
+### HR Manager
+**Role:** Human resources specialist
+
+**Responsibilities:**
+- Creates employee records
+- Manages HR contracts
+- Sets contract types for employees
+- Maintains employee personal data
+
+**Access Level:** HR module access + basic FOP employee data
+
+**Related Models:** `hr.employee`, `hr.contract`
+
+---
+
+### FOP Employee
+**Role:** Ukrainian individual entrepreneur (contractor)
+
+**Definition:** A natural person registered as FOP (Фізична Особа-Підприємець) in Ukraine, providing services to the company
+
+**Characteristics:**
+- Has Ukrainian tax registration
+- Assigned KVED business activity codes
+- May be in 3rd tax group
+- Receives payments for services rendered
+
+**Related Models:** `hr.employee` (with `is_fop=True`)
+
+---
+
+## Business Concepts
+
+### FOP (Фізична Особа-Підприємець)
+**English:** Individual Entrepreneur / Sole Proprietor
+
+**Definition:** A Ukrainian legal status for self-employed individuals who conduct business activities and pay simplified taxes
+
+**System Usage:**
+- Employees marked with `is_fop=True`
+- Requires registration number and date
+- Subject to Ukrainian tax and KVED regulations
+
+**Related Fields:**
+- `hr.employee.is_fop`
+- `hr.employee.reg_number`
+- `hr.employee.date_of_reg`
+- `hr.employee.date_of_single_tax`
+
+---
+
+### KVED (КВЕД)
+**Full Name:** Класифікація Видів Економічної Діяльності
+
+**English:** Classification of Economic Activities
+
+**Definition:** Ukrainian national classifier of types of economic activities, similar to NACE codes in Europe
+
+**Format:** Numeric code + description (e.g., "72.20 Computer programming activities")
+
+**System Usage:**
+- Assigned to FOP employees to specify their business activities
+- Required for contract compliance
+- One KVED marked as "main"
+- Tracked with activation dates
+
+**Models:**
+- `fop.kved.list` (master list)
+- `fop.kved` (employee assignments)
+
+**Example:** "63.11 Data processing, hosting and related activities"
+
+---
+
+### Contract Type
+**Definition:** Classification of FOP contracts defining allowed products, required KVEDs, and banking codes
+
+**Purpose:**
+- Groups similar contracts together
+- Defines allowable billing products
+- Specifies required KVED codes for compliance
+- Provides bank codes for payment processing
+
+**Model:** `fop.contract.type`
+
+**Key Fields:**
+- `name` - Type name (e.g., "Software Development", "Design Services")
+- `code` - Bank code for payment categorization
+- `subcode` - Bank subcode for detailed categorization
+- `default_kved_ids` - Required KVED codes for this type
+
+**Usage:** Links `fop.contract`, `fop.product`, `hr.contract`, `fop.contract.template`
+
+---
+
+### Contract Number Format
+**Format:** `YYYYMMNNN`
+
+**Structure:**
+- `YYYY` - Four-digit year (e.g., 2024)
+- `MM` - Two-digit month (01-12)
+- `NNN` - Three-digit sequence number per company (001-999)
+
+**Example:** `202401045` = 45th contract for company in January 2024
+
+**Generation:** Auto-generated on contract creation, unique per company per month
+
+**Implementation:** `fop.contract._generate_contract_number()`
+
+---
+
+### FOP Company (Deposit Company)
+**Definition:** Legal entity that employs FOP contractors
+
+**Purpose:** Stores company-specific contract details, signing information, and facsimile
+
+**Model:** `fop.company`
+
+**Key Data:**
+- Bilingual agreement details (UA/EN)
+- Signing lines for contracts (up to 3 signatories)
+- Company prefix for documents
+- Digital facsimile/stamp image
+
+**Usage:** Each `fop.contract` belongs to one `fop.company`
+
+---
+
+### 3rd Group FOP
+**Definition:** FOPs registered under Ukraine's 3rd tax group (higher tax rate, fewer restrictions)
+
+**System Tracking:** `hr.employee.is_3rd_group_fop`
+
+**Significance:**
+- Requires additional attention and compliance monitoring
+- Different tax treatment
+- Flagged in the system for visibility
+
+**Note:** Most FOPs are 1st or 2nd group; 3rd group is less common
+
+---
+
+### Tax Inspection Office
+**Definition:** Ukrainian regional tax authority office where FOP is registered
+
+**Model:** `account.tax.inspection`
+
+**Employee Field:** `hr.employee.tax_inspection_id`
+
+**Purpose:**
+- Tracks regulatory jurisdiction
+- Required for official communications
+- Used in contract generation
+
+**Enhancement:** Module adds improved search functionality via `name_search`
+
+---
+
+### Blueprint ID / EMA Code
+**Field:** `hr.employee.blueprint_id`
+
+**Definition:** Internal employee identifier code used in company systems
+
+**Purpose:** Cross-reference between Odoo and other company platforms
+
+**Format:** Alphanumeric code (company-specific)
+
+---
+
+## Billing & Payment Concepts
+
+### Bill (Рахунок)
+**Model:** `fop.bill`
+
+**Definition:** Invoice for services rendered by FOP employee
+
+**Lifecycle:**
+1. **Draft** - Created (manually or from batch payment)
+2. **Draft** - Bill lines added with products and hours
+3. **Posted** - Validated and finalized (amount must match payment)
+
+**Key Validations:**
+- Amount must match linked payment (`amount_diff = 0`)
+- Cannot modify/delete posted bills
+- Must be set to draft to make changes
+
+**Related:** `fop.bill.line`, `account.payment`
+
+---
+
+### Bill Line
+**Model:** `fop.bill.line`
+
+**Definition:** Individual line item on a FOP bill
+
+**Components:**
+- `product_id` - FOP product/service
+- `hours` - Quantity/hours
+- `price` - Unit price (historical if available)
+- `unit` - Unit of measure
+- `total_price` - Computed (hours × price)
+
+**Product Filtering:** Only products matching employee's contract type are available
+
+---
+
+### Amount Difference
+**Field:** `fop.bill.amount_diff`
+
+**Calculation:** `payment.amount - bill.total`
+
+**Purpose:** Validation before posting bill
+
+**States:**
+- `diff < 0` - Bill total exceeds payment (reduce bill)
+- `diff > 0` - Bill total less than payment (add items)
+- `diff = 0` - Match (can post)
+
+**User Feedback:** `amount_diff_message` provides guidance
+
+---
+
+### Batch Payment Integration
+**Trigger:** `account.batch.payment.validate_batch_button()`
+
+**Behavior:** When batch payment is validated for Ukrainian company:
+1. Checks each payment in batch
+2. For payments without FOP bills:
+   - Creates `fop.bill` record
+   - Links to payment and employee
+   - Adds single bill line with "Total" product
+   - Sets amount to match payment
+
+**Implementation:** Hook pattern in `account_batch_payment.py:82`
+
+**Condition:** Only for companies with `comp_inv_num_part` starting with "UA"
+
+---
+
+### Historical Pricing
+**Model:** `fop.price.history`
+
+**Purpose:** Track product price changes over time
+
+**Trigger:** Automatic on `fop.product.write()` when price changes
+
+**Usage:** Bill lines use price from date of bill (not current price)
+
+**Method:** `fop.price.history.get_price_on_date(product_id, date)`
+
+---
+
+## Contract & Document Concepts
+
+### Contract Template
+**Model:** `fop.contract.template`
+
+**Definition:** Bilingual document template for contracts, acts, or bills
+
+**Template Types:**
+- `contract` - Employment contract
+- `act` - Acceptance act
+- `bill` - Bill/invoice
+
+**Structure:**
+- `ua_part` - Ukrainian HTML content
+- `en_part` - English HTML content
+- `line_ids` - Hierarchical template blocks
+- `valid_from` - Template version date
+
+**Variables:** Supports template variable substitution (see TEMPLATE_VARIABLES.md)
+
+**Versioning:** Multiple templates per contract type, selected by `valid_from` date
+
+---
+
+### Template Blocks
+**Model:** `fop.contract.template.line`
+
+**Purpose:** Hierarchical sections within contract template
+
+**Numbering System:** Supports multi-level (e.g., 1.1, 1.2, 3.1.1, 3.1.2)
+
+**Content:**
+- `number` - Section number
+- `content_ua` - Ukrainian HTML
+- `content_en` - English HTML
+
+**Usage:** Allows modular contract composition
+
+---
+
+### Facsimile
+**Field:** `fop.company.facsimile_image`
+
+**Definition:** Digital image of company stamp/signature for contracts
+
+**Format:** Binary image (typically PNG/JPG)
+
+**Usage:**
+- Embedded in "PDF with facsimile" version
+- Omitted in "PDF without facsimile" version
+
+**Purpose:** Create signed vs unsigned contract versions
+
+---
+
+### PDF Attachments
+**Fields:**
+- `fop.contract.pdf_with_facsimile_id`
+- `fop.contract.pdf_without_facsimile_id`
+
+**Model:** `ir.attachment`
+
+**Purpose:** Store generated contract PDFs
+
+**Generation:** Via `contract.template.test.print.wizard`
+
+**Versions:**
+1. **With Facsimile** - Includes company stamp/signature (for records)
+2. **Without Facsimile** - Clean version (for sending to employee)
+
+---
+
+### Acceptance Act
+**Model:** `fop.act`
+
+**Definition:** Document confirming services were rendered (Ukrainian business practice)
+
+**Relationship:** `fop.act.bill_id` → `fop.bill`
+
+**Status:** Currently minimal implementation (placeholder for future expansion)
+
+---
+
+## Product & Pricing Concepts
+
+### FOP Product
+**Model:** `fop.product`
+
+**Definition:** Service or deliverable that can be billed to a FOP
+
+**Characteristics:**
+- Bilingual names (UA/EN)
+- Unit of measure (service, hour, unit, 100 units, ad block, month)
+- Price (tracked in history)
+- Linked to contract type
+
+**Special Product:** "Total" (`ua_fop.fop_product_total`)
+- Used in auto-generated bills from batch payments
+- Unit price set to payment amount
+- Quantity = 1
+
+---
+
+### Unit of Measure
+**Field:** `fop.product.unit`
+
+**Options:**
+- `service / послуга`
+- `hour / година`
+- `unit / одиниця`
+- `100 units / 100 одиниць`
+- `ad block / рекламний блок`
+- `month / місяць`
+
+**Translation Methods:**
+- `get_unit_ua()` - Returns Ukrainian version
+- `get_unit_en()` - Returns English version
+
+**Constant:** `fop.product.UNIT_TRANSLATION` dictionary
+
+---
+
+### Price History Entry
+**Model:** `fop.price.history`
+
+**Created When:** Product price is changed
+
+**Fields:**
+- `product_id` - FOP product
+- `date` - Date of price change
+- `price` - New price
+- `notes` - Auto-generated change description
+
+**Lookup:** Returns price effective on specific date (for historical billing)
+
+---
+
+## Technical Components
+
+### Cost Center
+**Model:** `payroll.cost.center`
+
+**Purpose:** Financial tracking and categorization
+
+**Usage:** Can be assigned to employees/contracts for budget allocation
+
+**Note:** Implementation details in `models/payroll_cost_center.py`
+
+---
+
+### Bank Statement Line
+**Model:** `fop.bank.statement.line`
+
+**Purpose:** Track income transactions from bank imports
+
+**Source:** Imported via `bank.statement.import.wizard`
+
+**Key Fields:**
+- `employee_id` - FOP employee receiving payment
+- `bank_account_id` - Receiving bank account
+- `date` - Transaction date
+- `amount` - Income amount
+- `description` - Transaction description
+
+**Reporting:** Grouped by date, used in income book reports
+
+---
+
+### Income Book Report
+**Wizard:** `income.book.report.wizard`
+
+**Purpose:** Generate Ukrainian-compliant income reports for FOPs
+
+**Data Source:** `fop.bank.statement.line` records
+
+**Format:** Likely Excel/PDF export (requires openpyxl)
+
+---
+
+### Bulk Contract Creation
+**Wizard:** `bulk.contract.creation.wizard`
+
+**Purpose:** Create multiple FOP contracts at once (e.g., annual renewals)
+
+**Features:**
+- Sequential numbering from custom start sequence
+- All contracts must be same company and period
+- Validates no overlapping dates
+
+**API:** `fop.contract.create_bulk_contracts(contract_data_list, starting_sequence)`
+
+---
+
+## State Machines
+
+### Bill States
+```
+draft ⟷ posted
+```
+
+**Transitions:**
+- `draft → posted`: `action_post()` (validates amount_diff = 0)
+- `posted → draft`: `action_set_to_draft()`
+
+**Constraints:**
+- Cannot modify/delete posted bills
+- Posting requires payment match
+
+---
+
+### Contract States
+```
+draft → running → inactive
+  ↑       ↓
+  ←───────┘
+```
+
+**Transitions:**
+- `draft → running`: `action_start()`
+- `running → inactive`: `action_set_inactive()`
+- `any → draft`: `action_draft()`
+
+**Constraints:**
+- Only one running contract per employee at a time
+- Overlap validation on running contracts
+
+---
+
+## Validation & Compliance
+
+### KVED Compliance Check
+**Method:** `hr.employee.action_check_kved_compliance()`
+
+**Purpose:** Verify employee has all required KVEDs for their contract type
+
+**Process:**
+1. Get employee's contract type
+2. Get required KVEDs from contract type
+3. Compare with employee's assigned KVEDs
+4. Report missing KVEDs
+
+**User Feedback:** Notification with missing KVED list
+
+---
+
+### Overlapping Contract Validation
+**Constraint:** `fop.contract._check_no_overlapping_running_contracts()`
+
+**Rule:** Employee can only have one running contract at any given time
+
+**Logic:** Date range overlap detection considering open-ended dates
+
+**Exception:** Only enforced for `state='running'` contracts
+
+---
+
+### Amount Matching Validation
+**Constraint:** Bill total must equal payment amount before posting
+
+**Check:** `fop.bill.action_post()` raises `ValidationError` if `amount_diff ≠ 0`
+
+**Exception:** Allowed for bills without linked payment (manual bills)
+
+---
+
+## Integration Points
+
+### Odoo HR Integration
+**Extended Models:**
+- `hr.employee` - FOP fields added
+- `hr.contract` - Deposit contract type field added
+
+**Dependencies:** Employee and contract records must exist in HR module
+
+---
+
+### Odoo Accounting Integration
+**Extended Models:**
+- `account.batch.payment` - Auto-bill creation hook
+- `account.payment` - Linked to FOP bills
+- `res.partner.bank` - SWIFT and FOP-specific fields
+- `res.bank` - Banking extensions
+
+**Flow:** Payment validation triggers bill creation
+
+---
+
+### Documents Module Integration
+**Data:** `data/documents_folder_data.xml`
+
+**Purpose:** Organize FOP-related documents in Odoo Documents app
+
+**Attachments:** Contract PDFs stored as attachments
+
+---
+
+### Report Engine (wkhtmltopdf)
+**Purpose:** Generate PDF contracts from HTML templates
+
+**Input:** Rendered HTML from QWeb templates
+
+**Output:** `ir.attachment` records linked to `fop.contract`
+
+---
+
+## Glossary Meta-Information
+
+**Document Version:** 1.0.8 (matches module version)
+
+**Last Updated:** 2025
+
+**Related Documentation:**
+- [Level 1 - System Context](./c1.mdx)
+- [Entity Relationship Diagram](../01_ERD.md)
+- [Architecture Overview](../02_Architecture_Overview.md)
+- [Template Variables Reference](../TEMPLATE_VARIABLES.md)
+
+---
+
+## Abbreviations
+
+| Abbreviation | Full Form | Meaning |
+|--------------|-----------|---------|
+| FOP | Фізична Особа-Підприємець | Individual Entrepreneur |
+| KVED | Класифікація Видів Економічної Діяльності | Classification of Economic Activities |
+| UA | Ukraine / Ukrainian | Country code / language |
+| EN | English | Language code |
+| HR | Human Resources | Employee management |
+| EMA | Employee Management Application | Internal system reference |
+| PDF | Portable Document Format | Document file format |
+| QWeb | Query Web | Odoo templating engine |
+
+---
+
+## External References
+
+### Ukrainian Government Resources
+- **KVED Classifier:** Official Ukrainian economic activity codes
+- **Tax Inspection Registry:** DPS (Державна податкова служба)
+- **FOP Regulations:** Ukrainian Tax Code, Chapter 1, Section 4
+
+### Odoo Documentation
+- [Odoo ORM API](https://www.odoo.com/documentation/17.0/developer/reference/backend/orm.html)
+- [Odoo Views](https://www.odoo.com/documentation/17.0/developer/reference/backend/views.html)
+- [Odoo Security](https://www.odoo.com/documentation/17.0/developer/reference/backend/security.html)

@@ -1,0 +1,57 @@
+---
+title: Level 1 - System Context
+description: High-level system context diagram for UA FOP Management System
+---
+
+<Diagram
+  lang="mermaid"
+  chart="
+graph TD;
+
+    %% Users
+    FOPManager[<a href='../glossary#fop-manager'>👤 FOP Manager<br/>Manages FOP employees, contracts, and compliance</a>]
+    AccountManager[<a href='../glossary#account-manager'>👤 Account Manager<br/>Responsible for specific FOP employees</a>]
+    HRManager[<a href='../glossary#hr-manager'>👤 HR Manager<br/>Manages employee contracts and data</a>]
+    FOP[<a href='../glossary#fop-employee'>👤 FOP Employee<br/>Ukrainian individual entrepreneur</a>]
+
+    %% Main System
+    Main[<a href='c2'>🎯 UA FOP Management System</a>]
+
+    %% User to System Relationships
+    FOPManager --> Main
+    AccountManager --> Main
+    HRManager --> Main
+    FOP -.-> Main
+
+    %% External Systems
+    TaxInspection[🏛️ Tax Inspection Registry<br/>Ukrainian tax inspection data]
+    BankSystem[🏦 Banking Systems<br/>Bank statements, transactions]
+
+    %% Infrastructure Components
+    OdooWebServer[🌐 Odoo ERP<br/>Core business platform]
+    ReportEngine[📄 Report Engine<br/>PDF generation]
+    FileStorage[📦 File Storage<br/>Cloud Storage]
+
+    %% System to External Systems
+    Main --> TaxInspection
+    Main --> BankSystem
+
+    %% System to Infrastructure
+    Main --> OdooWebServer
+    Main --> ReportEngine
+    Main --> FileStorage
+
+
+    %% Styling
+    classDef userStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
+    classDef systemStyle fill:#e8f5e8,stroke:#388e3c,stroke-width:3px,color:#000
+    classDef externalStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+    classDef infraStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+
+    class FOPManager,AccountManager,HRManager,FOP userStyle
+    class Main systemStyle
+    class TaxInspection,BankSystem externalStyle
+    class OdooWebServer,ReportEngine,FileStorage infraStyle
+
+"
+/>

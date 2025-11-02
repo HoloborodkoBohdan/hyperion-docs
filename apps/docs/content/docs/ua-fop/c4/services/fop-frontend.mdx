@@ -1,0 +1,51 @@
+---
+title: FOP Frontend
+description: Internal component view of the FOP Frontend
+---
+<Diagram
+  lang="mermaid"
+  chart="
+graph TD;
+
+    subgraph FOPFrontend [FOP Frontend]
+        
+        %% Presentation Layer
+        subgraph PresentationLayer [PresentationLayer]
+            LoginView[Login View - User authentication and session handling]
+            DashboardView[Dashboard View - Overview of contracts, payments and reports]
+            ContractsView[Contracts View - Displays active and past contracts]
+            PaymentsView[Payments View - Shows transaction and salary details]
+            ReportsView[Reports View - Access to generated reports PDF]
+        end
+        
+        %% Application Layer
+        subgraph ApplicationLayer [ApplicationLayer]
+            APIClient[API Client to FOP Backend]
+        end
+    end
+
+    %% External API
+    FOPBackend[<a href='fop-backend'>FOP Backend API</a>]
+
+    %% Internal relationships
+    LoginView --> DashboardView
+    DashboardView --> ContractsView
+    DashboardView --> PaymentsView
+    DashboardView --> ReportsView
+    ContractsView --> APIClient
+    PaymentsView --> APIClient
+    ReportsView --> APIClient
+
+    %% External interface
+    APIClient -.-> FOPBackend
+
+    %% Styling
+    classDef presentationLayerStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000
+    classDef applicationLayerStyle fill:#c8e6c9,stroke:#388e3c,stroke-width:2px,color:#000
+    classDef interfaceStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+
+    class LoginView,DashboardView,ContractsView,PaymentsView,ReportsView presentationLayerStyle
+    class APIClient applicationLayerStyle
+    class FOPBackend interfaceStyle
+"
+/>

@@ -1,0 +1,51 @@
+---
+title: Admin Frontend
+description: Internal component view of the Admin Frontend
+---
+<Diagram
+  lang="mermaid"
+  chart="
+graph TD;
+
+    subgraph AdminFrontend [Admin Frontend]
+        
+        %% Presentation Layer
+        subgraph PresentationLayer [PresentationLayer]
+            EmployeeUI[Employee Management UI - List, create and edit FOP employee data]
+            ContractUI[Contract Management UI - Create and update employment contracts]
+            BillUI[Bill Management UI - Create and manage FOP bills]
+            ReportUI[Reports UI - Download generated reports PDF]
+        end
+        
+        %% Application Layer
+        subgraph ApplicationLayer [ApplicationLayer]
+            AuthModule[Auth Module - User authentication and session management]
+            APIClient[API Client to FOP Backend]
+        end
+    end
+
+    %% External API
+    FOPBackend[<a href='fop-backend'>FOP Backend API</a>]
+
+    %% Internal relationships
+    AuthModule --> EmployeeUI
+    AuthModule --> ContractUI
+    AuthModule --> BillUI
+    EmployeeUI --> APIClient
+    ContractUI --> APIClient
+    BillUI --> APIClient
+    ReportUI --> APIClient
+
+    %% External interface
+    APIClient -.-> FOPBackend
+
+    %% Styling
+    classDef presentationLayerStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
+    classDef applicationLayerStyle fill:#bbdefb,stroke:#1976d2,stroke-width:2px,color:#000
+    classDef interfaceStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+
+    class EmployeeUI,ContractUI,BillUI,ReportUI presentationLayerStyle
+    class AuthModule,APIClient applicationLayerStyle
+    class FOPBackend interfaceStyle
+"
+/>

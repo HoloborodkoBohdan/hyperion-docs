@@ -1,0 +1,9 @@
+{
+  "title": "Services",
+  "pages": [
+    "index",
+    "admin-frontend",
+    "fop-frontend",
+    "fop-backend"
+  ]
+}

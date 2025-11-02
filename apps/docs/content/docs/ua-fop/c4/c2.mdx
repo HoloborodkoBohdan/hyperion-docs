@@ -1,0 +1,76 @@
+---
+title: Level 2 - Container
+description: Container-level view of the UA FOP Management System
+---
+
+
+<Diagram
+  lang="mermaid"
+  chart="
+graph TD;
+
+    %% Users
+    FOPManager[<a href='../glossary#fop-manager'>👤 FOP Manager<br/>Manages FOP employees, contracts, and compliance</a>]
+    AccountManager[<a href='../glossary#account-manager'>👤 Account Manager<br/>Responsible for specific FOP employees</a>]
+    HRManager[<a href='../glossary#hr-manager'>👤 HR Manager<br/>Manages employee contracts and data</a>]
+    FOP[<a href='../glossary#fop-employee'>👤 FOP Employee<br/>Ukrainian individual entrepreneur</a>]
+
+    %% Main System
+    subgraph UAFOPSystem [<a href='c1'>🎯 UA FOP Management System</a>]
+        AdminFrontend[<a href='services/admin-frontend'>🖥️ Admin Frontend<br/>Odoo Web UI<br/>Administrative interface</a>]
+        FOPBackend[<a href='services/fop-backend'>⚙️ FOP Backend<br/>Python/Odoo Module<br/>Business logic & data management</a>]
+        FOPFrontend[<a href='services/fop-frontend'>🌐 FOP Frontend<br/>Web UI for FOP employees<br/>Read-only portal<br/><small>⚠️ Will be deprecated in future</small></a>]
+        PostgresDB[<a href='c3#database'>🗄️ PostgreSQL Database<br/>All application data</a>]
+    end
+
+    %% Odoo Instance
+    Odoo[<a href='c3#odoo'>💼 Odoo ERP<br/>HR, Accounting, Payments<br/>Core business platform</a>]
+
+    %% External Systems
+    TaxInspection[🏛️ Tax Inspection Registry<br/>Ukrainian tax inspection data]
+    BankSystem[🏦 Banking Systems<br/>Bank statements, transactions]
+
+    %% Infrastructure
+    ReportEngine[📄 Report Engine<br/>wkhtmltopdf - PDF generation]
+    FileStorage[📦 File Storage<br/>Cloud Storage]
+
+    %% User to System
+    FOPManager --> AdminFrontend
+    AccountManager --> AdminFrontend
+    HRManager --> AdminFrontend
+
+    FOP --> FOPFrontend
+
+    %% Internal relationships
+    AdminFrontend -->FOPBackend
+    FOPBackend -->|jsonrpc| Odoo
+    FOPBackend --> PostgresDB
+    FOPFrontend -->FOPBackend
+
+    %% External integrations
+    FOPBackend --> TaxInspection
+    FOPBackend --> ReportEngine
+    FOPBackend --> FileStorage
+    Odoo --> BankSystem
+
+    %% Styling
+    classDef userStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
+    classDef adminFrontendStyle fill:#bbdefb,stroke:#1976d2,stroke-width:3px,color:#000
+    classDef backendStyle fill:#fff9c4,stroke:#f57f17,stroke-width:3px,color:#000
+    classDef frontendStyle fill:#c8e6c9,stroke:#388e3c,stroke-width:2px,color:#000
+    classDef dbStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,color:#000
+    classDef odooStyle fill:#ffe0b2,stroke:#e65100,stroke-width:3px,color:#000
+    classDef externalStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+    classDef infraStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+
+    class FOPManager,AccountManager,HRManager,FOP userStyle
+    class AdminFrontend adminFrontendStyle
+    class FOPBackend backendStyle
+    class FOPFrontend frontendStyle
+    class PostgresDB dbStyle
+    class Odoo odooStyle
+    class TaxInspection,BankSystem externalStyle
+    class ReportEngine,FileStorage infraStyle
+
+"
+/>

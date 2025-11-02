@@ -1,0 +1,82 @@
+---
+title: FOP Backend
+description: Internal component view of the FOP Backend
+---
+<Diagram
+  lang="mermaid"
+  chart="
+graph TD;
+
+    subgraph FOPBackend [FOP Backend]
+        
+        %% App Layer
+        subgraph AppLayer [ApplicationLayer]
+            APIHandlers[API Handlers - Expose endpoints for Frontends and Odoo integration]
+            AuthService[Auth Service - JWT authentication and role validation]
+        end
+        
+        %% Service Layer
+        subgraph ServiceLayer [ServiceLayer]
+            EmployeeService[Employee Service - Manages FOP profiles, assignments, and statuses]
+            ContractService[Contract Service - Handles creation, validation, and archiving of contracts]
+            PayrollService[Payroll Service - Salary and payment processing logic]
+            ReportService[Report Service - Generates PDF reports via Report Engine]
+            TaxSyncService[Tax Sync Service - Synchronizes tax data with Tax Inspection]
+            FileService[File Service - Stores and retrieves files from cloud storage]
+        end
+        
+        %% Data Layer
+        subgraph DataLayer [DataLayer]
+            DatabaseAdapter[Database Adapter - ORM layer for PostgreSQL operations]
+            PostgresDB[PostgreSQL Database - All application data]
+        end
+    end
+
+    %% External Dependencies
+    ReportEngine[Report Engine]
+    TaxInspection[Tax Inspection]
+    FileStorage[File Storage]
+    Odoo[Odoo ERP]
+    
+    %% Related Services
+    AdminFrontend[<a href='admin-frontend'>Admin Frontend</a>]
+    FOPFrontend[<a href='fop-frontend'>FOP Frontend</a>]
+
+    %% Internal relationships
+    APIHandlers --> AuthService
+    APIHandlers --> EmployeeService
+    APIHandlers --> ContractService
+    APIHandlers --> PayrollService
+    PayrollService --> ReportService
+    PayrollService --> TaxSyncService
+    ReportService --> FileService
+    EmployeeService --> DatabaseAdapter
+    ContractService --> DatabaseAdapter
+    PayrollService --> DatabaseAdapter
+    DatabaseAdapter --> PostgresDB
+
+    %% External interfaces
+    ReportService -.-> ReportEngine
+    TaxSyncService -.-> TaxInspection
+    FileService -.-> FileStorage
+    APIHandlers -.-> Odoo
+    
+    %% Service relationships
+    AdminFrontend -.-> FOPBackend
+    FOPFrontend -.-> FOPBackend
+
+    %% Styling
+    classDef appLayerStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
+    classDef serviceLayerStyle fill:#fff9c4,stroke:#f57f17,stroke-width:2px,color:#000
+    classDef dataLayerStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    classDef interfaceStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+
+    class APIHandlers,AuthService appLayerStyle
+    class EmployeeService,ContractService,PayrollService,ReportService,TaxSyncService,FileService serviceLayerStyle
+    class DatabaseAdapter,PostgresDB dataLayerStyle
+    class ReportEngine,TaxInspection,FileStorage,Odoo interfaceStyle
+    class AdminFrontend,FOPFrontend frontendStyle
+    
+    classDef frontendStyle fill:#c8e6c9,stroke:#388e3c,stroke-width:2px,color:#000
+"
+/>
