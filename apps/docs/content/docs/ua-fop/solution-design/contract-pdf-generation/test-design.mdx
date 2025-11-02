@@ -1,0 +1,265 @@
+---
+title: "Test Design"
+description: "Test design documentation for Contract PDF Async Generation"
+---
+
+This document outlines the comprehensive test strategy for implementing asynchronous PDF generation with user-controlled facsimile inclusion.
+
+## Test Structure
+
+<Diagram lang="plantuml" path="contract-pdf-test-flow.puml" alt="Contract PDF Test Flow" />
+
+## Test Scenarios
+
+### 1. PDF Generation Request
+
+#### Scenario 1.1: Request with Facsimile
+- **Test Case 1.1.1**: User requests PDF generation with facsimile enabled
+- **Test Case 1.1.2**: Job is created with status "pending"
+- **Test Case 1.1.3**: Job ID is returned to user
+- **Test Case 1.1.4**: Job is queued successfully
+
+#### Scenario 1.2: Request without Facsimile
+- **Test Case 1.2.1**: User requests PDF generation with facsimile disabled
+- **Test Case 1.2.2**: Job created with correct facsimile flag
+- **Test Case 1.2.3**: Generated PDF does not contain facsimile
+
+### 2. Async Job Processing
+
+#### Scenario 2.1: Job Queue
+- **Test Case 2.1.1**: Job is added to queue
+- **Test Case 2.1.2**: Worker picks up job from queue
+- **Test Case 2.1.3**: Job status updates to "processing"
+- **Test Case 2.1.4**: Multiple jobs are processed in order
+
+#### Scenario 2.2: PDF Generation
+- **Test Case 2.2.1**: Worker calls Report Service
+- **Test Case 2.2.2**: PDF is generated successfully
+- **Test Case 2.2.3**: PDF is uploaded to File Service
+- **Test Case 2.2.4**: Job status updates to "completed"
+
+#### Scenario 2.3: Job Completion
+- **Test Case 2.3.1**: Job record is updated with PDF file ID
+- **Test Case 2.3.2**: Completion timestamp is recorded
+- **Test Case 2.3.3**: User is notified (if WebSocket enabled)
+
+### 3. Status Tracking
+
+#### Scenario 3.1: Check Job Status
+- **Test Case 3.1.1**: User can query job status by job_id
+- **Test Case 3.1.2**: Status shows correct state (pending/processing/completed/failed)
+- **Test Case 3.1.3**: Completed job includes PDF download URL
+- **Test Case 3.1.4**: Failed job includes error message
+
+#### Scenario 3.2: List Jobs for Contract
+- **Test Case 3.2.1**: User can list all PDF jobs for a contract
+- **Test Case 3.2.2**: Jobs are sorted by creation date (newest first)
+- **Test Case 3.2.3**: List includes job status and facsimile flag
+
+### 4. Real-Time Updates
+
+#### Scenario 4.1: WebSocket Notifications
+- **Test Case 4.1.1**: User subscribes to job updates via WebSocket
+- **Test Case 4.1.2**: User receives status update when job starts
+- **Test Case 4.1.3**: User receives progress updates during generation
+- **Test Case 4.1.4**: User receives completion notification
+
+#### Scenario 4.2: Polling
+- **Test Case 4.2.1**: User polls job status endpoint
+- **Test Case 4.2.2**: Status updates are returned correctly
+- **Test Case 4.2.3**: Polling stops after job completion
+
+### 5. PDF Download
+
+#### Scenario 5.1: Download Completed PDF
+- **Test Case 5.1.1**: User downloads PDF using file_id
+- **Test Case 5.1.2**: PDF content matches requested facsimile option
+- **Test Case 5.1.3**: PDF downloads successfully
+- **Test Case 5.1.4**: Multiple downloads of same PDF work
+
+#### Scenario 5.2: Download Before Completion
+- **Test Case 5.2.1**: User attempts download while job is pending
+- **Test Case 5.2.2**: Appropriate error message is returned
+- **Test Case 5.2.3**: User attempts download while job is processing
+- **Test Case 5.2.4**: User is notified to wait for completion
+
+### 6. Error Handling & Retries
+
+#### Scenario 6.1: Generation Failures
+- **Test Case 6.1.1**: Report Service timeout triggers retry
+- **Test Case 6.1.2**: Template rendering error is logged
+- **Test Case 6.1.3**: Invalid contract data fails job
+- **Test Case 6.1.4**: File Service unavailable triggers retry
+
+#### Scenario 6.2: Retry Mechanism
+- **Test Case 6.2.1**: Failed job is retried automatically
+- **Test Case 6.2.2**: Retry count is incremented
+- **Test Case 6.2.3**: Job fails permanently after 3 retries
+- **Test Case 6.2.4**: Retry delays follow exponential backoff (5s, 30s, 5min)
+
+#### Scenario 6.3: Error Reporting
+- **Test Case 6.3.1**: Failed job shows error message
+- **Test Case 6.3.2**: Error details are logged for debugging
+- **Test Case 6.3.3**: User receives failure notification
+
+### 7. Concurrent Processing
+
+#### Scenario 7.1: Multiple Jobs
+- **Test Case 7.1.1**: 10 jobs are queued simultaneously
+- **Test Case 7.1.2**: Workers process jobs in parallel
+- **Test Case 7.1.3**: All jobs complete successfully
+- **Test Case 7.1.4**: No job data corruption occurs
+
+#### Scenario 7.2: Queue Management
+- **Test Case 7.2.1**: Queue handles 50 concurrent jobs
+- **Test Case 7.2.2**: Queue length is monitored
+- **Test Case 7.2.3**: Jobs are processed in FIFO order
+- **Test Case 7.2.4**: Queue recovers after worker restart
+
+### 8. Performance Testing
+
+#### Scenario 8.1: Generation Time
+- **Test Case 8.1.1**: PDF generation completes within 30 seconds
+- **Test Case 8.1.2**: Simple contracts generate faster than complex ones
+- **Test Case 8.1.3**: Facsimile inclusion doesn't significantly impact time
+- **Test Case 8.1.4**: Generation time is consistent across runs
+
+#### Scenario 8.2: Throughput
+- **Test Case 8.2.1**: System handles 50 concurrent jobs
+- **Test Case 8.2.2**: Average job processing time is measured
+- **Test Case 8.2.3**: Queue doesn't grow unbounded under load
+- **Test Case 8.2.4**: Workers scale horizontally
+
+#### Scenario 8.3: Resource Usage
+- **Test Case 8.3.1**: Memory usage stays within limits during generation
+- **Test Case 8.3.2**: CPU usage is reasonable
+- **Test Case 8.3.3**: Database connection pool is managed correctly
+- **Test Case 8.3.4**: Redis memory usage is monitored
+
+### 9. Security Testing
+
+#### Scenario 9.1: Access Control
+- **Test Case 9.1.1**: User can only request PDFs for their contracts
+- **Test Case 9.1.2**: User cannot view other users' job status
+- **Test Case 9.1.3**: PDF download requires authentication
+- **Test Case 9.1.4**: Unauthorized access attempts are blocked
+
+#### Scenario 9.2: Data Protection
+- **Test Case 9.2.1**: PDFs are stored with encryption at rest
+- **Test Case 9.2.2**: Download URLs are time-limited
+- **Test Case 9.2.3**: Sensitive data in jobs is protected
+- **Test Case 9.2.4**: Audit logs record all PDF operations
+
+#### Scenario 9.3: Input Validation
+- **Test Case 9.3.1**: Invalid contract_id is rejected
+- **Test Case 9.3.2**: Malformed requests are handled gracefully
+- **Test Case 9.3.3**: SQL injection attempts are prevented
+- **Test Case 9.3.4**: XSS in contract data is sanitized
+
+### 10. Integration Testing
+
+#### Scenario 10.1: End-to-End Flow
+- **Test Case 10.1.1**: Complete flow from request to download
+- **Test Case 10.1.2**: All services interact correctly
+- **Test Case 10.1.3**: Data flows through all components
+- **Test Case 10.1.4**: No data is lost between services
+
+#### Scenario 10.2: Service Dependencies
+- **Test Case 10.2.1**: Contract Service integrates with Job Queue
+- **Test Case 10.2.2**: Worker integrates with Report Service
+- **Test Case 10.2.3**: Worker integrates with File Service
+- **Test Case 10.2.4**: Notification Service integrates correctly
+
+### 11. Monitoring & Alerting
+
+#### Scenario 11.1: Metrics Collection
+- **Test Case 11.1.1**: Job creation metrics are tracked
+- **Test Case 11.1.2**: Queue length is monitored
+- **Test Case 11.1.3**: Generation success/failure rate is tracked
+- **Test Case 11.1.4**: Average generation time is recorded
+
+#### Scenario 11.2: Alerts
+- **Test Case 11.2.1**: Alert fires when queue length > 100
+- **Test Case 11.2.2**: Alert fires when failure rate > 5%
+- **Test Case 11.2.3**: Alert fires when generation time > 60s
+- **Test Case 11.2.4**: Alert fires when workers are down
+
+### 12. Migration Testing
+
+#### Scenario 12.1: Feature Flag
+- **Test Case 12.1.1**: Feature flag enables/disables async generation
+- **Test Case 12.1.2**: Fallback to sync generation works
+- **Test Case 12.1.3**: No disruption during feature rollout
+- **Test Case 12.1.4**: Both modes can coexist temporarily
+
+#### Scenario 12.2: Data Migration
+- **Test Case 12.2.1**: Old PDF references remain accessible
+- **Test Case 12.2.2**: New jobs use new schema
+- **Test Case 12.2.3**: No data loss during migration
+- **Test Case 12.2.4**: Rollback procedure works
+
+## Test Environment
+
+### Environment Setup
+- **Development**: Local Odoo + Redis + Workers
+- **Staging**: Staging Odoo + Redis cluster + 2 workers
+- **Production**: Production Odoo + Redis cluster + 5 workers
+
+### Test Data
+- 100 test contracts with various complexity
+- 20 test users
+- Mix of simple and complex contract templates
+- Test contracts with and without facsimile requirements
+
+## Test Tools
+
+- **Unit Testing**: pytest, unittest
+- **Integration Testing**: pytest with fixtures
+- **Load Testing**: Locust, JMeter
+- **Queue Testing**: Redis CLI, monitoring tools
+- **API Testing**: Postman, curl
+- **Monitoring**: Prometheus, Grafana
+- **WebSocket Testing**: wscat, custom scripts
+
+## Exit Criteria
+
+All tests must pass before production deployment:
+
+- [ ] 100% of functional tests pass
+- [ ] 0 critical bugs
+- [ ] 0 high-priority bugs
+- [ ] PDF generation time < 30s (95th percentile)
+- [ ] 50 concurrent jobs processed successfully
+- [ ] Retry mechanism works for all failure scenarios
+- [ ] Queue handles 100+ jobs without issues
+- [ ] All security tests pass
+- [ ] Monitoring and alerting configured
+- [ ] Feature flag tested and working
+- [ ] Rollback procedure tested
+
+## Test Schedule
+
+- **Week 1**: Unit tests (Scenarios 1-2)
+- **Week 2**: Integration tests (Scenarios 3-5)
+- **Week 3**: Error handling and retries (Scenario 6)
+- **Week 4**: Concurrent processing and performance (Scenarios 7-8)
+- **Week 5**: Security testing (Scenario 9)
+- **Week 6**: End-to-end and monitoring (Scenarios 10-11)
+- **Week 7**: Migration testing (Scenario 12)
+- **Week 8**: Final validation and documentation
+
+## Risks
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Queue service downtime | High | Implement queue monitoring and auto-restart |
+| Worker process crashes | High | Multiple workers + auto-restart |
+| PDF generation timeout | Medium | Timeout handling + retry logic |
+| High queue backlog | Medium | Worker scaling + queue limits |
+| WebSocket connection issues | Low | Fallback to polling |
+
+## Related Documentation
+
+- [Solution Design: Contract PDF Async Generation](./0002-contract-pdf-async-generation)
+- [Contract Creation Sequence Diagram](../../sequence/contract-creation)
+- [Contract Service (C4)](../../c4/services/contract-service)

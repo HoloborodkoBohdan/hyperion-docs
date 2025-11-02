@@ -1,0 +1,187 @@
+---
+title: "Test Design"
+description: "Test design documentation for Migrate FOP Frontend to Odoo Portal"
+---
+
+This document outlines the comprehensive test strategy for migrating FOP Frontend (React + Vite + React Admin) to Odoo Portal. The testing approach covers functional, security, performance, and user acceptance testing.
+
+## Test Structure
+
+<Diagram lang="plantuml" path="test-design-wbs.puml" alt="Test Design Work Breakdown Structure" />
+
+## Test Scenarios
+
+### 1. Authentication & Authorization
+
+#### Scenario 1.1: SSO Login
+- **Test Case 1.1.1**: FOP employee can login via SSO
+- **Test Case 1.1.2**: Invalid SSO credentials are rejected
+- **Test Case 1.1.3**: SSO session timeout works correctly
+- **Test Case 1.1.4**: SSO token validation
+
+#### Scenario 1.2: Authorization
+- **Test Case 1.2.1**: Portal users have read-only access
+- **Test Case 1.2.2**: Portal users cannot access admin features
+- **Test Case 1.2.3**: Portal users see only their own data
+
+### 2. Contract Management
+
+#### Scenario 2.1: View Contracts
+- **Test Case 2.1.1**: Display list of employee's contracts
+- **Test Case 2.1.2**: View contract details
+- **Test Case 2.1.3**: Filter contracts by status (active, archived)
+- **Test Case 2.1.4**: Search contracts by number
+
+#### Scenario 2.2: PDF Downloads
+- **Test Case 2.2.1**: Download contract PDF with facsimile
+- **Test Case 2.2.2**: Download contract PDF without facsimile
+- **Test Case 2.2.3**: Inline PDF viewer works in browser
+- **Test Case 2.2.4**: PDF download fallback if viewer fails
+
+### 3. Payment History
+
+#### Scenario 3.1: View Payments
+- **Test Case 3.1.1**: Display payment history list
+- **Test Case 3.1.2**: View payment details
+- **Test Case 3.1.3**: Filter payments by date range
+- **Test Case 3.1.4**: Sort payments by amount/date
+
+#### Scenario 3.2: Payment Information
+- **Test Case 3.2.1**: Verify payment amounts are correct
+- **Test Case 3.2.2**: Verify payment dates are correct
+- **Test Case 3.2.3**: Link payments to related contracts
+
+### 4. Bill Management
+
+#### Scenario 4.1: View Bills
+- **Test Case 4.1.1**: Display bill list
+- **Test Case 4.1.2**: View bill details
+- **Test Case 4.1.3**: Filter bills by status (unpaid, paid)
+- **Test Case 4.1.4**: View bill line items
+
+#### Scenario 4.2: Bill Documents
+- **Test Case 4.2.1**: View bill attachments
+- **Test Case 4.2.2**: Download bill PDFs
+- **Test Case 4.2.3**: Verify bill amounts match payments
+
+### 5. Security Testing
+
+#### Scenario 5.1: Data Isolation
+- **Test Case 5.1.1**: User A cannot see User B's contracts
+- **Test Case 5.1.2**: User A cannot see User B's payments
+- **Test Case 5.1.3**: User A cannot see User B's bills
+- **Test Case 5.1.4**: Direct URL access to other user's data is blocked
+
+#### Scenario 5.2: Access Control
+- **Test Case 5.2.1**: Portal users cannot create records
+- **Test Case 5.2.2**: Portal users cannot update records
+- **Test Case 5.2.3**: Portal users cannot delete records
+- **Test Case 5.2.4**: API endpoints enforce access control
+
+#### Scenario 5.3: OWASP Top 10
+- **Test Case 5.3.1**: XSS vulnerability testing
+- **Test Case 5.3.2**: SQL injection testing
+- **Test Case 5.3.3**: CSRF protection testing
+- **Test Case 5.3.4**: Session management testing
+
+### 6. Performance Testing
+
+#### Scenario 6.1: Load Testing
+- **Test Case 6.1.1**: 100 concurrent users
+- **Test Case 6.1.2**: 200 concurrent users
+- **Test Case 6.1.3**: 500 concurrent users
+- **Test Case 6.1.4**: Peak load (1000 users)
+
+#### Scenario 6.2: Response Time
+- **Test Case 6.2.1**: Page load less than 2 seconds
+- **Test Case 6.2.2**: API response less than 500ms
+- **Test Case 6.2.3**: PDF download starts within 1 second
+- **Test Case 6.2.4**: Search results less than 1 second
+
+#### Scenario 6.3: Database Performance
+- **Test Case 6.3.1**: Query optimization for large datasets
+- **Test Case 6.3.2**: Index effectiveness testing
+- **Test Case 6.3.3**: Connection pool handling
+
+### 7. Browser Compatibility
+
+#### Scenario 7.1: Desktop Browsers
+- **Test Case 7.1.1**: Chrome (latest version)
+- **Test Case 7.1.2**: Firefox (latest version)
+- **Test Case 7.1.3**: Safari (latest version)
+- **Test Case 7.1.4**: Edge (latest version)
+
+#### Scenario 7.2: Mobile Browsers
+- **Test Case 7.2.1**: Chrome Mobile (Android)
+- **Test Case 7.2.2**: Safari Mobile (iOS)
+- **Test Case 7.2.3**: Responsive design on tablets
+- **Test Case 7.2.4**: Touch interactions work correctly
+
+### 8. Migration Testing
+
+#### Scenario 8.1: User Migration
+- **Test Case 8.1.1**: All users migrated successfully
+- **Test Case 8.1.2**: User SSO links are correct
+- **Test Case 8.1.3**: No data loss during migration
+- **Test Case 8.1.4**: User permissions are correct
+
+#### Scenario 8.2: Data Integrity
+- **Test Case 8.2.1**: Contract data is accessible
+- **Test Case 8.2.2**: Payment data is accurate
+- **Test Case 8.2.3**: Bill data is complete
+- **Test Case 8.2.4**: PDF attachments are accessible
+
+#### Scenario 8.3: Rollback Testing
+- **Test Case 8.3.1**: Rollback procedure works
+- **Test Case 8.3.2**: Old frontend still functional during rollback
+- **Test Case 8.3.3**: No data corruption after rollback
+
+### 9. User Acceptance Testing (UAT)
+
+#### Scenario 9.1: Real User Testing
+- **Test Case 9.1.1**: 10 pilot users test portal
+- **Test Case 9.1.2**: User feedback collection
+- **Test Case 9.1.3**: Usability issues documented
+- **Test Case 9.1.4**: User satisfaction survey
+
+#### Scenario 9.2: Training Validation
+- **Test Case 9.2.1**: Training materials are clear
+- **Test Case 9.2.2**: Users can complete key tasks
+- **Test Case 9.2.3**: FAQ addresses common questions
+
+### 10. Monitoring & Alerting
+
+#### Scenario 10.1: Monitoring Setup
+- **Test Case 10.1.1**: Login metrics tracked
+- **Test Case 10.1.2**: Error rates monitored
+- **Test Case 10.1.3**: Performance metrics collected
+- **Test Case 10.1.4**: Alert thresholds configured
+
+#### Scenario 10.2: Alert Testing
+- **Test Case 10.2.1**: Authentication failure alerts work
+- **Test Case 10.2.2**: Performance degradation alerts work
+- **Test Case 10.2.3**: Error spike alerts work
+
+## Test Environment
+
+### Environment Setup
+- **Development**: Local Odoo 18 instance
+- **Staging**: Staging Odoo 18 with SSO integration
+- **Production**: Production Odoo 18 (post-migration)
+
+
+## Risks
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Incomplete test coverage | High | Comprehensive test plan review |
+| SSO integration issues | High | Early SSO testing in staging |
+| Performance bottlenecks | Medium | Load testing before UAT |
+| Browser compatibility issues | Medium | Cross-browser testing matrix |
+| User resistance | Medium | Pilot program and training |
+
+## Related Documentation
+
+- [Solution Design](./0001-migrate-fop-frontend-to-odoo) - Architecture and implementation details
+- [FOP Backend (C4)](../../c4/services/fop-backend) - Backend service reference
+- [Security Requirements](./0001-migrate-fop-frontend-to-odoo#security) - Security specifications

@@ -1,0 +1,517 @@
+---
+title: Solution Design
+description: Migrate FOP Frontend into Odoo ERP
+---
+
+# Migrate FOP Frontend into Odoo ERP
+
+## Purpose
+
+We need to deprecate the standalone FOP Frontend and migrate its functionality into Odoo's native web interface.
+
+### Business Drivers
+
+**Cost Reduction:**
+- Eliminate separate frontend application infrastructure costs (hosting, CI/CD, monitoring)
+- Reduce support and maintenance overhead (bug fixes, updates, security patches)
+- Decrease deployment complexity (one less application to deploy and manage)
+- Lower operational costs (servers, domains, certificates)
+
+**Technical Consolidation:**
+- Leverage existing Odoo 18 infrastructure already in place
+- Use unified authentication (SSO already configured in Odoo)
+- Single deployment process instead of separate frontend deployments
+- Unified monitoring, logging, and alerting
+
+### Expected Benefits
+
+- **Reduced Maintenance**: One less application to maintain, update, and monitor
+- **Cost Savings**: Infrastructure and operational cost reduction
+- **Unified UX**: Consistent interface with other Odoo modules
+- **Simplified Architecture**: Fewer moving parts, easier to understand and support
+- **Better Integration**: Direct ORM access, no API layer complexity
+- **Future-proof**: Leverage Odoo's ongoing development and updates
+
+## Requirements
+
+### Functional Requirements
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-1 | FOP employees can view their personal contracts | High |
+| FR-2 | FOP employees can download contract PDFs (with and without facsimile) | High |
+| FR-3 | FOP employees can view payment history | High |
+| FR-4 | FOP employees can view bill information | High |
+| FR-5 | FOP employees authenticate via SSO | High |
+| FR-6 | FOP employees have read-only access (no create/update/delete) | High |
+| FR-7 | FOP employees can only see their own data | High |
+| FR-8 | Portal provides contract list with filtering (active, archived) | Medium |
+| FR-9 | Portal provides search functionality for contracts | Medium |
+| FR-10 | PDF viewer supports inline viewing in browser | Medium |
+| FR-11 | Portal is responsive and works on mobile devices | Low |
+| FR-12 | Portal menu structure is intuitive and easy to navigate | Medium |
+
+### Non-Functional Requirements
+
+| ID | Requirement | Target |
+|----|-------------|---------|
+| NFR-1 | Page load times | < 2 seconds |
+| NFR-2 | Support concurrent users | 100+ users |
+| NFR-3 | Portal availability | 99.9% uptime |
+| NFR-4 | Zero data loss during migration | 100% |
+| NFR-5 | Feature parity with existing FOP Frontend | 100% |
+| NFR-6 | User satisfaction score | > 80% |
+| NFR-7 | Support ticket increase | < 5% |
+| NFR-8 | SSO authentication response time | < 1 second |
+| NFR-9 | PDF download start time | < 1 second |
+| NFR-10 | Security compliance | OWASP Top 10 |
+| NFR-11 | Session timeout | 30 minutes |
+| NFR-12 | Accessibility compliance | WCAG 2.1 |
+
+## Owners
+
+- **Manager**: Ivan H.
+- **Team**: X Dev Team
+
+## Current State
+
+### Existing FOP Frontend
+- **Technology**: React with Vite and React Admin
+- **Status**: Deprecated
+- **Authentication**: Login/password (to be replaced with SSO)
+- **Users**: [FOP Employees](../../glossary/actors#fop-employee) with read-only access
+- **Features**:
+  - View personal FOP contracts
+  - Download contract PDFs
+  - View payment history
+  - View bill information
+
+### Target: Odoo ERP
+- **Version**: Odoo 18 (already deployed and operational)
+- **Technology**: Odoo Web Framework (Python + JavaScript + XML)
+- **Authentication**: SSO integration (same as currently used in Odoo)
+- **UI**: Odoo Portal interface
+- **Access Control**: Odoo security groups and rules
+- **Data Source**: Direct access to Odoo database (FOP Backend module tables)
+- **Synchronization**: Not needed - Portal reads directly from same database as FOP Backend
+- **Infrastructure**: Reuse existing Odoo 18 infrastructure (no additional servers needed)
+
+## Flow Overview
+
+### Migration Architecture
+
+**Key Changes:**
+- Technology: React/Vite/React Admin → Odoo Portal (Python/JavaScript/XML)
+- Authentication: Login/Password → SSO Integration (same as Odoo)
+- Deployment: Standalone application → Integrated Odoo module
+
+<Diagram lang="mermaid" chart="
+graph TD;
+    subgraph Current[Current Architecture]
+        FOPFrontend[FOP Frontend<br/>Standalone App]
+        FOPBackend1[FOP Backend<br/>Odoo Module]
+        DB1[(PostgreSQL)]
+
+        FOPFrontend --> FOPBackend1
+        FOPBackend1 --> DB1
+    end
+
+    subgraph Target[Target Architecture]
+        OdooWeb[Odoo Web Client<br/>Native Interface]
+        FOPBackend2[FOP Backend<br/>Odoo Module]
+        DB2[(PostgreSQL)]
+
+        OdooWeb --> FOPBackend2
+        FOPBackend2 --> DB2
+    end
+
+    Current -.->|Migration| Target
+
+    classDef current fill:#ffcccc,stroke:#ff0000
+    classDef target fill:#ccffcc,stroke:#00ff00
+
+    class FOPFrontend,FOPBackend1,DB1 current
+    class OdooWeb,FOPBackend2,DB2 target
+"/>
+
+## Data Architecture & Synchronization
+
+### Current Architecture (Standalone FOP Frontend)
+
+<Diagram lang="mermaid" chart="
+graph TB
+    subgraph External[External Application]
+        FOPFrontend[FOP Frontend<br/>React + Vite + React Admin]
+    end
+
+    subgraph OdooSystem[Odoo System]
+        OdooWebClient[Odoo Web Client<br/>Admin Interface]
+        FOPBackend[FOP Backend<br/>Odoo Module]
+    end
+
+    DB[(PostgreSQL<br/>Database)]
+
+    FOPFrontend -->|API Calls| FOPBackend
+    OdooWebClient --> FOPBackend
+    FOPBackend --> DB
+
+    classDef external fill:#ffcccc,stroke:#ff0000,stroke-width:2px
+    classDef odoo fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    classDef db fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+
+    class FOPFrontend external
+    class OdooWebClient,FOPBackend odoo
+    class DB db
+"/>
+
+**Challenge**: FOP Frontend and Odoo are separate applications, requiring API synchronization and potential data consistency issues.
+
+### Target Architecture (Integrated Odoo Portal)
+
+<Diagram lang="mermaid" chart="
+graph TB
+    subgraph OdooApp[Odoo Application - Single Unified System]
+        OdooPortal[Odoo Portal<br/>FOP Employee Interface]
+        OdooWebClient[Odoo Web Client<br/>Admin Interface]
+        FOPBackend[FOP Backend<br/>Odoo Module]
+
+        OdooPortal --> FOPBackend
+        OdooWebClient --> FOPBackend
+    end
+
+    DB[(PostgreSQL<br/>Database)]
+
+    FOPBackend --> DB
+
+    classDef portal fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    classDef admin fill:#bbdefb,stroke:#1976d2,stroke-width:2px
+    classDef backend fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    classDef db fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+
+    class OdooPortal portal
+    class OdooWebClient admin
+    class FOPBackend backend
+    class DB db
+"/>
+
+**Benefits**: Both Portal and Admin access same database - Real-time data consistency (no sync needed), Single source of truth, Simplified architecture
+
+### How Data Synchronization Works
+
+**Answer: NO synchronization needed!**
+
+Since FOP Backend is an Odoo module, all data already exists in Odoo database. The Portal will:
+1. Use same Odoo ORM to access data
+2. Read from same tables: `fop_contract`, `fop_bill`, `account_payment`
+3. Apply security rules to show only employee-owned records
+4. Provide real-time access (no caching, no API lag)
+
+### Data Consistency Strategy
+
+**No synchronization needed because:**
+- **Same Database**: Portal and Admin use same PostgreSQL database
+- **Same ORM**: Both use Odoo ORM to access data
+- **Same Models**: Portal reads from same models as FOP Backend
+- **Real-time**: Changes made by Admin are immediately visible in Portal
+- **Transaction Safety**: Odoo transaction management ensures consistency
+
+### Security Isolation
+
+While data is in same database, security rules ensure FOP employees see only their data:
+
+```python
+# Record rules ensure FOP employees see only their own records
+<record id="fop_contract_portal_rule" model="ir.rule">
+    <field name="name">FOP Contract: portal users see own contracts</field>
+    <field name="model_id" ref="model_fop_contract"/>
+    <field name="domain_force">
+        [("employee_id.user_id", "=", user.id)]
+    </field>
+    <field name="groups" eval="[(4, ref("base.group_portal"))]"/>
+</record>
+```
+
+**Key Points:**
+- Portal users can ONLY read (no create/update/delete)
+- Portal users can ONLY see their own records (enforced by record rules)
+- No API layer needed - direct ORM access
+- Data always current (no sync delays)
+
+
+## Scope
+
+### In Scope
+
+- [ ] Create Odoo views for FOP employee portal
+- [ ] Implement contract viewing interface
+- [ ] Add PDF download functionality
+- [ ] Display payment history
+- [ ] Show bill information
+- [ ] Configure security rules for FOP employees
+- [ ] Create menu items and navigation
+- [ ] Migrate existing user accounts
+- [ ] Update authentication flow
+- [ ] Test with real FOP employees
+
+### Out of Scope
+
+- [ ] Redesign of existing UI/UX (keep functionality similar)
+- [ ] New features beyond current FOP Frontend capabilities
+- [ ] Mobile app development
+- [ ] Integration with external systems (already handled by FOP Backend)
+- [ ] Contract creation/editing (FOP employees have read-only access)
+
+## Risk
+
+### Technical Risks
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| User resistance to new interface | Medium | Provide training materials and smooth transition period |
+| Authentication migration issues | High | Test thoroughly, provide fallback mechanism |
+| Performance degradation with Odoo UI | Medium | Optimize queries, implement caching, load testing |
+| Security misconfiguration | High | Comprehensive security review, penetration testing |
+| Data migration errors | High | Backup data, implement rollback plan, dry-run migrations |
+
+### Stability Concerns
+
+- [ ] Odoo web client performance under load
+- [ ] Session management for many concurrent FOP employees
+- [ ] Database connection pooling
+- [ ] Static asset serving (CSS, JS, images)
+- [ ] PDF generation and download speeds
+
+## Research
+
+### Research #1: Odoo Portal vs Internal Views
+
+**Question**: Should FOP employees use Odoo Portal or internal views?
+
+**Options**:
+1. **Odoo Portal**: External users, limited access, simplified interface
+2. **Internal Views**: Full Odoo web client, more powerful but complex
+
+**Result**: Use **Odoo Portal**
+- FOP employees are external users (not company employees)
+- Portal provides cleaner, focused interface
+- Better security isolation from internal Odoo data
+- Lower license cost (portal users vs internal users)
+
+### Research #2: Authentication Strategy
+
+**Question**: How to migrate existing FOP Frontend users to Odoo?
+
+**Options**:
+1. Force password reset for all users
+2. Migrate password hashes (if compatible)
+3. Use OAuth/SSO integration
+
+**Result**: Use **SSO integration** (currently used in Odoo)
+- FOP Frontend currently uses login/password authentication
+- Odoo already has SSO integration configured
+- Migrate users to use same SSO system as Odoo
+- No password migration needed
+- Seamless authentication experience
+- Single sign-on across all systems
+
+### Research #3: PDF Viewing Strategy
+
+**Question**: How to handle PDF viewing in Odoo?
+
+**Options**:
+1. Inline PDF viewer using browser capabilities
+2. Download-only approach
+3. Third-party PDF viewer integration
+
+**Result**: Use **inline viewer** with download option
+- Better user experience
+- Leverages browser PDF capabilities
+- Fallback to download if viewer fails
+
+## Implementation Plan
+
+### Phase 1: Portal Setup (Week 1-2)
+
+- [ ] Configure Odoo Portal module
+- [ ] Create FOP employee security group
+- [ ] Design portal menu structure
+- [ ] Configure SSO integration for portal users
+- [ ] Test SSO authentication flow
+
+### Phase 2: Views Development (Week 3-5)
+
+- [ ] Create contract list view
+- [ ] Implement contract detail view
+- [ ] Add PDF viewer/download
+- [ ] Build payment history view
+- [ ] Create bill information views
+
+### Phase 3: Security & Testing (Week 6-7)
+
+- [ ] Implement record rules (FOP employees see only their data)
+- [ ] Security audit and penetration testing
+- [ ] UAT with selected FOP employees
+- [ ] Performance testing and optimization
+
+### Phase 4: Migration & Rollout (Week 8)
+
+- [ ] Migrate user accounts from FOP Frontend
+- [ ] Deploy to production
+- [ ] Monitor for issues
+- [ ] Provide user support
+
+### Phase 5: Deprecation (Week 9-10)
+
+- [ ] Run both systems in parallel
+- [ ] Redirect FOP Frontend to Odoo
+- [ ] Decommission FOP Frontend infrastructure
+
+## Additional Requirements
+
+### Backend
+
+- [ ] Odoo Portal module enabled
+- [ ] Security groups configured: `portal_fop_employee`
+- [ ] Record rules for data isolation
+- [ ] API endpoints for AJAX operations
+- [ ] PDF generation optimization
+
+#### API Changes
+
+No new API endpoints needed - reuse existing FOP Backend:
+- `fop.contract` - Contract records
+- `fop.bill` - Bill records
+- `account.payment` - Payment records
+- `ir.attachment` - PDF attachments
+
+### Frontend (Odoo Web)
+
+- [ ] XML views for portal pages
+- [ ] QWeb templates for custom layouts
+- [ ] JavaScript for interactive features
+- [ ] CSS styling matching Odoo portal theme
+- [ ] Responsive design for mobile browsers
+
+#### Portal Menu Structure
+
+```
+FOP Portal
+├── My Contracts
+│   ├── Active Contracts
+│   └── Contract History
+├── Payments
+│   └── Payment History
+├── Bills
+│   ├── Unpaid Bills
+│   └── Bill History
+└── Documents
+    └── Download PDFs
+```
+
+### Security
+
+- [ ] Portal access only (not internal)
+- [ ] SSO authentication configured and tested
+- [ ] Record rules: employees see only their own records
+- [ ] Field-level security where needed
+- [ ] Rate limiting for downloads
+- [ ] Session timeout configuration
+- [ ] HTTPS enforcement
+- [ ] SSO token validation
+
+### QA
+
+- [ ] Test all user scenarios
+- [ ] Performance testing (100+ concurrent users)
+- [ ] Security testing (OWASP Top 10)
+- [ ] Accessibility testing (WCAG 2.1)
+
+### Migration
+
+- [ ] Export users from FOP Frontend
+- [ ] Create corresponding Odoo portal users
+- [ ] Link users to SSO identity provider
+- [ ] Test SSO login for migrated users
+- [ ] Notify users of migration and new SSO login
+- [ ] Provide migration guide/FAQ with SSO instructions
+
+## Monitoring
+
+### Metrics to Track
+
+- [ ] Portal login rate
+- [ ] Page load times
+- [ ] PDF download frequency
+- [ ] Error rates
+- [ ] User session duration
+- [ ] Support ticket volume
+
+### Alerts
+
+- [ ] Portal authentication failures spike
+- [ ] SSO integration failures
+- [ ] Slow response times (greater than 3s)
+- [ ] High error rates
+- [ ] PDF generation failures
+
+## Success Criteria
+
+- [ ] All FOP employees can access portal
+- [ ] 100% feature parity with FOP Frontend
+- [ ] Page load times less than 2 seconds
+- [ ] Zero data loss during migration
+- [ ] User satisfaction score greater than 80%
+- [ ] Support ticket increase less than 5%
+- [ ] FOP Frontend successfully decommissioned
+
+## Architecture Decisions
+
+### Technology Choice: Odoo Portal
+
+**Why Odoo Portal instead of keeping separate frontend?**
+
+1. **Already Have Odoo 18**: Infrastructure is deployed and operational
+2. **Cost Reduction**: Main driver for this migration
+   - No separate hosting costs
+   - No separate CI/CD pipeline
+   - No separate monitoring/alerting
+   - No separate security updates
+3. **Maintenance Reduction**: One less application to support
+4. **Direct Database Access**: No API layer, better performance
+5. **SSO Integration**: Already configured in Odoo
+6. **Security**: Odoo's proven security model
+7. **Updates**: Free updates with Odoo version upgrades
+
+### Architecture Patterns
+
+**Patterns Used:**
+- **Portal Pattern**: External users with limited, read-only access
+- **Record Rules**: Row-level security for multi-tenant data isolation
+- **ORM Pattern**: Direct model access without API layer
+- **SSO Pattern**: Single Sign-On for unified authentication
+
+**Why These Patterns:**
+- Proven in Odoo ecosystem
+- Well-documented and supported
+- Reduce custom code maintenance
+- Leverage Odoo framework capabilities
+
+## Additional Documentation
+
+### Related Documentation
+- [FOP Frontend (C4)](../../c4/services/fop-frontend) - Current frontend architecture
+- [Admin Frontend (C4)](../../c4/services/admin-frontend) - Odoo web interface reference
+- [FOP Backend (C4)](../../c4/services/fop-backend) - Backend service architecture
+- [FOP Employee Actor](../../glossary/actors#fop-employee) - User role definition
+- [C3 Component Diagram](../../c4/c3) - System component overview
+- [ERD - FOP Backend](../../erd/fop-backend) - Database schema
+
+### External Resources
+- [Odoo 18 Portal Documentation](https://www.odoo.com/documentation/18.0/developer/reference/backend/portal.html) - Official Odoo Portal guide
+- [Odoo 18 Security](https://www.odoo.com/documentation/18.0/developer/reference/backend/security.html) - Security and access rights
+- [Odoo 18 ORM](https://www.odoo.com/documentation/18.0/developer/reference/backend/orm.html) - ORM documentation
+- [Odoo 18 Views](https://www.odoo.com/documentation/18.0/developer/reference/backend/views.html) - View architecture
+
+### Decision Records
+- [Direct ORM vs API Layer - Decision to use direct ORM access for better performance](../../adrs/0001-direct-orm-vs-api-layer)
+

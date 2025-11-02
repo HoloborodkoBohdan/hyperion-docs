@@ -1,0 +1,129 @@
+@startuml
+start
+
+while (PDF Request Tests Pass?) is (no)
+  :Test PDF Generation Request;
+  note right
+    - Request with facsimile
+    - Request without facsimile
+    - Job creation
+    - Queue validation
+  end note
+  :Fix Issues;
+endwhile (yes)
+
+while (Async Processing Tests Pass?) is (no)
+  :Test Async Job Processing;
+  note right
+    - Job queue operations
+    - Worker picks up job
+    - PDF generation
+    - Job completion
+  end note
+  :Fix Issues;
+endwhile (yes)
+
+while (Status Tracking Tests Pass?) is (no)
+  :Test Status Tracking;
+  note right
+    - Check job status
+    - List jobs for contract
+    - Status transitions
+  end note
+  :Fix Issues;
+endwhile (yes)
+
+while (Real-Time Updates Tests Pass?) is (no)
+  :Test Real-Time Updates;
+  note right
+    - WebSocket notifications
+    - Polling mechanism
+    - Progress updates
+  end note
+  :Fix Issues;
+endwhile (yes)
+
+while (PDF Download Tests Pass?) is (no)
+  :Test PDF Download;
+  note right
+    - Download completed PDF
+    - Download before completion
+    - Facsimile validation
+  end note
+  :Fix Issues;
+endwhile (yes)
+
+while (Error Handling Tests Pass?) is (no)
+  :Test Error Handling & Retries;
+  note right
+    - Generation failures
+    - Retry mechanism
+    - Error reporting
+  end note
+  :Fix Issues;
+endwhile (yes)
+
+while (Concurrent Processing Tests Pass?) is (no)
+  :Test Concurrent Processing;
+  note right
+    - Multiple jobs
+    - Queue management
+    - 50 concurrent jobs
+  end note
+  :Fix Issues;
+endwhile (yes)
+
+while (Performance Acceptable?) is (no)
+  :Test Performance;
+  note right
+    - Generation time < 30s
+    - Throughput testing
+    - Resource usage
+  end note
+  :Optimize;
+endwhile (yes)
+
+while (Security Tests Pass?) is (no)
+  :Test Security;
+  note right
+    - Access control
+    - Data protection
+    - Input validation
+  end note
+  :Fix Vulnerabilities;
+endwhile (yes)
+
+while (Integration Tests Pass?) is (no)
+  :Test Integration;
+  note right
+    - End-to-end flow
+    - Service dependencies
+    - Data flow
+  end note
+  :Fix Issues;
+endwhile (yes)
+
+while (Monitoring Works?) is (no)
+  :Test Monitoring & Alerting;
+  note right
+    - Metrics collection
+    - Alert configuration
+    - Alert testing
+  end note
+  :Fix Setup;
+endwhile (yes)
+
+while (Migration Tests Pass?) is (no)
+  :Test Migration;
+  note right
+    - Feature flag
+    - Data migration
+    - Rollback procedure
+  end note
+  :Fix Issues;
+endwhile (yes)
+
+#palegreen:Deploy to Production;
+stop
+
+@enduml

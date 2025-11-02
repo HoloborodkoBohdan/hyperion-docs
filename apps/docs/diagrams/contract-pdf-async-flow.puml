@@ -1,0 +1,33 @@
+@startuml
+actor User
+participant "Contract Service" as CS
+participant "Job Queue" as Q
+participant "Worker" as W
+participant "Report Service" as RS
+participant "File Service" as FS
+database "Database" as DB
+
+User -> CS: POST /contracts/{id}/generate-pdf\n{include_facsimile: true}
+CS -> DB: Create job record (status: pending)
+CS -> Q: Queue job
+CS -> User: {job_id, status: pending}
+
+... Async Processing ...
+
+Q -> W: Dequeue job
+W -> DB: Update status: processing
+W -> RS: Generate PDF (include_facsimile: true)
+RS -> W: PDF bytes
+W -> FS: Upload PDF
+FS -> W: file_id
+W -> DB: Update job (status: completed, pdf_file_id)
+W -> User: WebSocket notification (optional)
+
+User -> CS: GET /pdf-jobs/{job_id}
+CS -> DB: Fetch job
+CS -> User: {status: completed, pdf_url}
+
+User -> FS: GET /files/{file_id}/download
+FS -> User: PDF file
+
+@enduml

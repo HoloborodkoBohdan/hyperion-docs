@@ -5,6 +5,8 @@
     "glossary",
     "c4",
     "erd",
-    "sequence"
+    "sequence",
+    "solution-design",
+    "adrs"
   ]
 }

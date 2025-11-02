@@ -1,0 +1,7 @@
+{
+  "title": "Migrate FOP Frontend to Odoo",
+  "pages": [
+    "0001-migrate-fop-frontend-to-odoo",
+    "test-design"
+  ]
+}

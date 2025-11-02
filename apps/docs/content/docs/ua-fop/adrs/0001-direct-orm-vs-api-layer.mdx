@@ -1,0 +1,46 @@
+---
+title: "ADR-0001: Direct ORM vs API Layer"
+description: "Decision to use direct ORM access for portal functionality"
+---
+
+**Status**: Approved
+**Date**: 2025-11-02
+**Decision Makers**: X Development Team
+
+## Context
+
+When migrating FOP Frontend to Odoo Portal, we need to decide how portal users access data: direct ORM queries or through a dedicated API layer.
+
+## Decision
+
+**Use Direct ORM Access** for portal functionality.
+
+## Rationale
+
+- **Performance**: Direct ORM eliminates API overhead (serialization, network calls)
+- **Simplicity**: Leverages Odoo's built-in security (record rules, access rights)
+- **Maintenance**: Fewer layers to maintain and debug
+- **Native Integration**: Portal templates work naturally with ORM
+
+## Consequences
+
+### Positive
+- Faster page loads (no API serialization)
+- Built-in security enforcement via Odoo ACLs
+- Simplified codebase
+- Better integration with Odoo portal framework
+
+### Negative
+- Less abstraction between data and presentation
+- Harder to swap backend implementation
+- Portal logic coupled to Odoo ORM
+
+## Alternatives Considered
+
+**API Layer**: Separate REST API for portal
+- Rejected due to added complexity and performance overhead
+- Would require additional security layer on top of ORM
+
+## Related
+
+- [Solution Design: Migrate FOP Frontend](../solution-design/migrate-fop-frontend-to-odoo/0001-migrate-fop-frontend-to-odoo)

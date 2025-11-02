@@ -1,4 +1,89 @@
 ---
 title: Overview
-description: This module is a comprehensive solution for managing Ukrainian FOPs (freelancers/individual entrepreneurs) within Odoo. It covers everything from employee and contract management to billing, payments, and reporting, with specific features tailored to Ukrainian legal and accounting requirements.
 ---
+
+## About This Project
+
+This is an **Odoo-related solution** that extends Odoo's core functionality with Ukrainian-specific features for FOP management. It integrates seamlessly with Odoo's HR, Accounting, and Payment modules while adding specialized capabilities for Ukrainian legal and accounting requirements.
+
+### [Glossary](./ua-fop/glossary)
+Definitions of key terms, [actors](./ua-fop/glossary/actors), and [abbreviations](./ua-fop/glossary/abbreviations) used throughout the system.
+
+### [Architecture (C4 Model)](./ua-fop/c4)
+Comprehensive architectural documentation following the C4 model:
+- **[C1 - System Context](./ua-fop/c4/c1)** - High-level system overview and external dependencies
+- **[C2 - Container](./ua-fop/c4/c2)** - Main containers: Admin Frontend, FOP Backend, FOP Frontend
+- **[C3 - Components](./ua-fop/c4/c3)** - Internal components and service layers within FOP Backend
+- **[Services](./ua-fop/c4/services)** - Detailed component-level documentation:
+  - [Employee Service](./ua-fop/c4/services/employee-service) - Employee validation and KVED management
+  - [Contract Service](./ua-fop/c4/services/contract-service) - Contract lifecycle and numbering
+  - [Billing Service](./ua-fop/c4/services/billing-service) - Bill management and Odoo integration
+
+### [Entity Relationship Diagrams](./ua-fop/erd)
+Database schema and table relationships:
+- [FOP Backend ERD](./ua-fop/erd/fop-backend) - Complete database schema for the FOP system
+
+### [Sequence Diagrams](./ua-fop/sequence)
+End-to-end workflow documentation:
+- [Contract Creation & PDF Generation](./ua-fop/sequence/contract-creation) - Complete contract creation flow
+- [Batch Payment Processing & Auto-Bill Creation](./ua-fop/sequence/batch-payment-processing) - Automated bill creation workflow
+
+### [Solution Design](./ua-fop/solution-design)
+Detailed solution design documents describing technical approach and implementation strategies for various features.
+
+### [Architecture Decision Records (ADRs)](./ua-fop/adrs)
+Documents capturing important architectural decisions with context, rationale, and consequences.
+
+## Key Features
+
+### Employee Management
+- FOP employee registration and profile management
+- KVED (Ukrainian activity classification) code validation
+- Tax group validation (3rd group)
+- Responsible Account Manager assignment
+- Integration with Tax Inspection Registry
+
+### Contract Management
+- Contract creation with automatic PDF generation
+- Unique contract numbering (YYYYMMNNN format)
+- Overlap prevention (one active contract per employee)
+- Two PDF versions: with and without company facsimile
+- Contract states: draft → running → archived
+
+### Billing & Payments
+- Automatic bill creation from batch payments
+- Single "Total" product line approach
+- Bill validation and posting to Odoo
+- Payment reconciliation
+- Integration with Odoo accounting module
+
+### Reporting
+- PDF contract generation via wkhtmltopdf
+- Queue-based report generation
+- File storage with audit logging
+- Cloud storage integration
+
+### Tax & Compliance
+- Tax Inspection Registry synchronization
+- KVED code compliance checking
+- Ukrainian tax requirements validation
+- Audit trail for all operations
+
+## System Integration
+
+The UA FOP Management System integrates with:
+
+- **Odoo ERP** - Core business platform for HR, Accounting, and Payments
+- **Tax Inspection Registry** - Ukrainian tax authority data synchronization
+- **PostgreSQL** - Primary database for all application data
+- **Report Engine (wkhtmltopdf)** - PDF generation
+- **Cloud Storage** - File and attachment storage
+
+## Getting Started
+
+1. Start with the [Glossary](./ua-fop/glossary) to understand key terminology
+2. Review the [C4 Architecture](./ua-fop/c4) for system structure
+3. Explore [Sequence Diagrams](./ua-fop/sequence) for workflow understanding
+4. Refer to [ERD](./ua-fop/erd) for database schema details
+5. Review [Solution Design](./ua-fop/solution-design) for implementation details
+6. Read [ADRs](./ua-fop/adrs) to understand architectural decisions

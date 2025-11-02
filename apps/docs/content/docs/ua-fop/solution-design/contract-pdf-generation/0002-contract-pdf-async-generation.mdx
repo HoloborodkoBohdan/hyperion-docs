@@ -1,0 +1,352 @@
+---
+title: Solution Design
+description: "Solution design for asynchronous PDF generation with user-controlled facsimile inclusion"
+---
+
+# 0002: Contract PDF Async Generation with Facsimile Control
+
+## Overview
+
+### Problem Statement
+
+Current contract PDF generation is synchronous and automatically creates two PDFs (with and without facsimile). This causes:
+- Long request timeouts during PDF generation
+- Unnecessary storage for unused PDF variants
+- Poor user experience with no generation progress feedback
+- Resource waste generating PDFs that may never be downloaded
+
+### Objectives
+
+1. Implement asynchronous PDF generation to prevent request timeouts
+2. Allow users to specify facsimile inclusion on-demand
+3. Provide generation progress feedback to users
+4. Reduce storage costs by generating only requested PDFs
+5. Enable regeneration of PDFs when needed
+
+## Requirements
+
+### Functional Requirements
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| FR-1 | User can request PDF generation with or without facsimile | High |
+| FR-2 | PDF generation runs asynchronously in background | High |
+| FR-3 | User receives real-time progress updates during generation | Medium |
+| FR-4 | User can view generation status (pending, processing, completed, failed) | High |
+| FR-5 | User can download PDF once generation completes | High |
+| FR-6 | User can regenerate PDF with different facsimile option | Medium |
+| FR-7 | Failed PDF generation can be retried | Medium |
+| FR-8 | Generated PDFs are cached for subsequent downloads | Low |
+
+### Non-Functional Requirements
+
+| ID | Requirement | Target |
+|----|-------------|---------|
+| NFR-1 | PDF generation completes within 30 seconds | < 30s |
+| NFR-2 | System handles 50 concurrent PDF generation requests | 50 concurrent |
+| NFR-3 | Generation queue processes jobs without data loss | 99.9% reliability |
+| NFR-4 | Failed jobs auto-retry up to 3 times | 3 retries |
+
+## Architecture
+
+### Current vs Target Architecture
+
+<Diagram lang="mermaid" chart="
+graph TB
+    subgraph Current[Current Synchronous Flow]
+        U1[User] -->|Create Contract| CS1[Contract Service]
+        CS1 -->|Generate 2 PDFs| RS1[Report Service]
+        RS1 -->|Both PDFs| FS1[File Service]
+        FS1 -->|Response + PDFs| U1
+        style U1 fill:#f9f,stroke:#333
+        style CS1 fill:#bbf,stroke:#333
+        style RS1 fill:#bfb,stroke:#333
+        style FS1 fill:#fbb,stroke:#333
+    end
+
+    subgraph Target[Target Async Flow]
+        U2[User] -->|Create Contract + Facsimile Option| CS2[Contract Service]
+        CS2 -->|Queue Job| Q[Job Queue]
+        CS2 -->|Job ID| U2
+        Q -->|Process| W[Worker]
+        W -->|Generate PDF| RS2[Report Service]
+        RS2 -->|Store PDF| FS2[File Service]
+        FS2 -->|Notify| N[Notification Service]
+        N -->|Update Status| U2
+        U2 -->|Poll/WebSocket| CS2
+        style U2 fill:#f9f,stroke:#333
+        style CS2 fill:#bbf,stroke:#333
+        style Q fill:#ffa,stroke:#333
+        style W fill:#aff,stroke:#333
+        style RS2 fill:#bfb,stroke:#333
+        style FS2 fill:#fbb,stroke:#333
+        style N fill:#faf,stroke:#333
+    end
+" alt="Architecture Comparison" />
+
+### Components
+
+#### 1. Job Queue System
+- **Technology**: Redis Queue (RQ) or Celery
+- **Responsibilities**:
+  - Queue PDF generation jobs
+  - Job priority management
+  - Retry failed jobs
+  - Job status tracking
+
+#### 2. Worker Process
+- **Technology**: Background workers (Celery workers or RQ workers)
+- **Responsibilities**:
+  - Process queued PDF generation jobs
+  - Call Report Service for PDF generation
+  - Handle failures and retries
+  - Update job status
+
+#### 3. PDF Generation Job
+```python
+{
+  "job_id": "uuid",
+  "contract_id": "integer",
+  "include_facsimile": "boolean",
+  "status": "pending|processing|completed|failed",
+  "created_at": "timestamp",
+  "completed_at": "timestamp|null",
+  "error_message": "string|null",
+  "retry_count": "integer",
+  "pdf_url": "string|null"
+}
+```
+
+#### 4. Notification System
+- **Options**: WebSocket, Server-Sent Events (SSE), or Polling
+- **Responsibilities**:
+  - Real-time status updates
+  - Completion notifications
+  - Error notifications
+
+## Data Model
+
+### New/Updated Tables
+
+#### `contract_pdf_jobs`
+```sql
+CREATE TABLE contract_pdf_jobs (
+  id SERIAL PRIMARY KEY,
+  job_id UUID UNIQUE NOT NULL,
+  contract_id INTEGER NOT NULL REFERENCES contracts(id),
+  include_facsimile BOOLEAN NOT NULL,
+  status VARCHAR(20) NOT NULL, -- pending, processing, completed, failed
+  created_at TIMESTAMP DEFAULT NOW(),
+  started_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  error_message TEXT,
+  retry_count INTEGER DEFAULT 0,
+  pdf_file_id INTEGER REFERENCES files(id),
+  created_by INTEGER REFERENCES users(id)
+);
+
+CREATE INDEX idx_contract_pdf_jobs_contract ON contract_pdf_jobs(contract_id);
+CREATE INDEX idx_contract_pdf_jobs_status ON contract_pdf_jobs(status);
+CREATE INDEX idx_contract_pdf_jobs_job_id ON contract_pdf_jobs(job_id);
+```
+
+#### Update `contracts` table
+```sql
+ALTER TABLE contracts
+  DROP COLUMN pdf_with_facsimile_id,
+  DROP COLUMN pdf_without_facsimile_id;
+-- PDFs now tracked via contract_pdf_jobs
+```
+
+## API Design
+
+### 1. Request PDF Generation
+
+```http
+POST /api/contracts/{id}/generate-pdf
+Content-Type: application/json
+
+{
+  "include_facsimile": true
+}
+```
+
+**Response:**
+```json
+{
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "pending",
+  "estimated_time": 15
+}
+```
+
+### 2. Check PDF Generation Status
+
+```http
+GET /api/contracts/{id}/pdf-jobs/{job_id}
+```
+
+**Response:**
+```json
+{
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "contract_id": 123,
+  "status": "completed",
+  "include_facsimile": true,
+  "created_at": "2025-11-02T10:00:00Z",
+  "completed_at": "2025-11-02T10:00:12Z",
+  "pdf_url": "/api/files/456/download"
+}
+```
+
+### 3. Download Generated PDF
+
+```http
+GET /api/files/{file_id}/download
+```
+
+### 4. List PDF Jobs for Contract
+
+```http
+GET /api/contracts/{id}/pdf-jobs
+```
+
+**Response:**
+```json
+{
+  "jobs": [
+    {
+      "job_id": "550e8400-e29b-41d4-a716-446655440000",
+      "include_facsimile": true,
+      "status": "completed",
+      "created_at": "2025-11-02T10:00:00Z",
+      "pdf_url": "/api/files/456/download"
+    }
+  ]
+}
+```
+
+### 5. WebSocket Status Updates (Optional)
+
+```javascript
+// Client subscribes to job updates
+ws://api/ws/pdf-jobs/{job_id}
+
+// Server sends updates
+{
+  "type": "status_update",
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "processing",
+  "progress": 50
+}
+```
+
+## Implementation Flow
+
+### PDF Generation Flow
+
+<Diagram lang="plantuml" path="contract-pdf-async-flow.puml" alt="Contract PDF Async Generation Flow" />
+
+## Security
+
+### Access Control
+- Users can only request PDFs for contracts they have access to
+- PDF download requires authentication and contract access validation
+- Job status visibility restricted to job creator and admins
+
+### Data Protection
+- PDFs stored with encryption at rest
+- Secure file download URLs with time-limited tokens
+- Audit log for all PDF generation and download requests
+
+## Error Handling
+
+### Retry Strategy
+```python
+MAX_RETRIES = 3
+RETRY_DELAYS = [5, 30, 300]  # seconds: 5s, 30s, 5min
+
+if job fails:
+  if retry_count < MAX_RETRIES:
+    schedule_retry(delay=RETRY_DELAYS[retry_count])
+    retry_count += 1
+  else:
+    mark_as_failed()
+    notify_user()
+```
+
+### Error Scenarios
+
+| Error | Handling |
+|-------|----------|
+| Report Service timeout | Retry with exponential backoff |
+| Template rendering error | Mark failed, log error details |
+| Storage service unavailable | Retry, fallback to local storage |
+| Invalid contract data | Mark failed, notify user with validation errors |
+
+## Testing Strategy
+
+### Unit Tests
+- Job creation and queuing
+- Worker job processing
+- Status update logic
+- Retry mechanism
+
+### Integration Tests
+- End-to-end PDF generation flow
+- WebSocket notification delivery
+- File upload and download
+- Concurrent job processing
+
+### Performance Tests
+- 50 concurrent PDF generation requests
+- PDF generation time < 30s
+- Queue throughput
+
+## Deployment
+
+### Phase 1: Backend Implementation
+1. Add `contract_pdf_jobs` table
+2. Implement job queue (Redis + RQ/Celery)
+3. Create worker process
+4. Implement API endpoints
+
+### Phase 2: Frontend Integration
+1. Add PDF generation UI with facsimile toggle
+2. Implement status polling or WebSocket
+3. Show generation progress
+4. Update PDF download links
+
+### Phase 3: Migration
+1. Keep existing synchronous flow as fallback
+2. Feature flag for async PDF generation
+3. Gradual rollout to users
+4. Monitor performance and errors
+
+### Rollback Plan
+- Feature flag to disable async generation
+- Fall back to synchronous generation
+- No data loss (jobs table preserved)
+
+## Monitoring
+
+### Metrics
+- PDF generation success rate
+- Average generation time
+- Queue length
+- Failed job count
+- Retry rate
+
+### Alerts
+- Queue length > 100 jobs
+- Failed job rate > 5%
+- Generation time > 60s
+- Worker process down
+
+## Future Enhancements
+
+1. **Batch PDF Generation**: Generate PDFs for multiple contracts at once
+2. **PDF Caching**: Cache generated PDFs for common facsimile options
+3. **Priority Queue**: VIP users get faster processing
+4. **Preview Mode**: Generate low-quality preview before full PDF
+5. **Custom Templates**: Allow users to select PDF templates
